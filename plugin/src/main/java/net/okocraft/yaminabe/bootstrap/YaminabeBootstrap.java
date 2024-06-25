@@ -3,6 +3,7 @@ package net.okocraft.yaminabe.bootstrap;
 import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.bootstrap.PluginBootstrap;
 import io.papermc.paper.plugin.bootstrap.PluginProviderContext;
+import net.okocraft.yaminabe.core.modules.Modules;
 import net.okocraft.yaminabe.core.util.YaminabeLogger;
 import net.okocraft.yaminabe.plugin.YaminabeContext;
 import net.okocraft.yaminabe.plugin.YaminabePlugin;
@@ -21,7 +22,8 @@ public final class YaminabeBootstrap implements PluginBootstrap {
     @Override
     public @NotNull JavaPlugin createPlugin(@NotNull PluginProviderContext context) {
         return new YaminabePlugin(new YaminabeContext(
-            context.getDataDirectory()
+            context.getDataDirectory(),
+            Modules.FACTORIES // TODO: collecting modules should be done by annotation processor
         ));
     }
 }
