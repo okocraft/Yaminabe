@@ -1,0 +1,7 @@
+name: Yaminabe
+version: '${projectVersion}'
+description: Yaminabe is a Paper plugin to provide *various* features.
+main: net.okocraft.yaminabe.plugin.YaminabePlugin
+bootstrapper: net.okocraft.yaminabe.bootstrap.YaminabeBootstrap
+api-version: '1.21'
+folia-supported: true
