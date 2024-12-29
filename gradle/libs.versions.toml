@@ -6,7 +6,7 @@ annotations = "26.0.1"
 paper = "1.21-R0.1-SNAPSHOT"
 
 # testing tool
-junit = "5.11.2"
+junit = "5.11.4"
 
 # testing environment
 mockito = "5.14.2"
