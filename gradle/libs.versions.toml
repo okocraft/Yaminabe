@@ -9,7 +9,7 @@ paper = "1.21-R0.1-SNAPSHOT"
 junit = "5.11.4"
 
 # testing environment
-mockito = "5.14.2"
+mockito = "5.15.2"
 slf4j = "2.0.16"
 
 # gradle plugins
