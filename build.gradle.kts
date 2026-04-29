@@ -11,7 +11,6 @@ jcommon {
 
     commonDependencies {
         compileOnlyApi(libs.annotations)
-        compileOnlyApi(libs.paper)
         compileOnlyApi(libs.slf4j.api)
 
         testImplementation(libs.junit.jupiter)

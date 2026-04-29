@@ -3,10 +3,12 @@ plugins {
     alias(libs.plugins.run.server)
 }
 
-val minecraftVersion = "1.21"
+val minecraftVersion = "26.1.2"
 
 dependencies {
     implementation(projects.yaminabeCommon)
+
+    compileOnlyApi(libs.paper)
 }
 
 bundler {
