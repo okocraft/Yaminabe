@@ -1,5 +1,8 @@
 package net.okocraft.yaminabe.paper.plugin;
 
+import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import net.okocraft.yaminabe.paper.command.YaminabeCommands;
 import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.platform.scheduler.SchedulerProvider;
@@ -40,6 +43,10 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.LOADED,
             "enable",
             () -> {
+                this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+                    Commands commands = event.registrar();
+                    YaminabeCommands.register(commands);
+                });
                 return PluginStatus.ENABLED;
             }
         );
