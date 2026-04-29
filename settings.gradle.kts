@@ -13,8 +13,8 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 rootProject.name = "yaminabe"
 
-addProject("core")
-addProject("plugin")
+addProject("common")
+addProject("paper")
 
 fun addProject(name: String) {
     addProject(name, name)
