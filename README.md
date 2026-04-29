@@ -4,8 +4,8 @@ Yaminabe is a Paper plugin for providing *various* features.
 
 ## Requirements
 
-- Java 21
-- Paper or Folia 1.21+
+- Java 25
+- Paper or Folia 26.1+
 
 ## Build
 
@@ -35,4 +35,4 @@ NOTE: When you run a Minecraft server, you indicate your agreement to [Minecraft
 
 This project is under the GPL-3.0 license. Please see [LICENSE](LICENSE) for more info.
 
-Copyright © 2024, OKOCRAFT
+Copyright © 2024-2026, OKOCRAFT
