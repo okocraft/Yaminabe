@@ -1,4 +1,4 @@
-package net.okocraft.yaminabe.common.util;
+package net.okocraft.yaminabe.common;
 
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;

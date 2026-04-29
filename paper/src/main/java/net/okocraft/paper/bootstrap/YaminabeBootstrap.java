@@ -3,10 +3,9 @@ package net.okocraft.paper.bootstrap;
 import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.bootstrap.PluginBootstrap;
 import io.papermc.paper.plugin.bootstrap.PluginProviderContext;
-import net.okocraft.yaminabe.common.modules.Modules;
-import net.okocraft.yaminabe.common.util.YaminabeLogger;
-import net.okocraft.paper.plugin.YaminabeContext;
 import net.okocraft.paper.plugin.YaminabePlugin;
+import net.okocraft.yaminabe.common.PluginStatus;
+import net.okocraft.yaminabe.common.YaminabeLogger;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.helpers.SubstituteLogger;
@@ -21,9 +20,6 @@ public final class YaminabeBootstrap implements PluginBootstrap {
 
     @Override
     public @NotNull JavaPlugin createPlugin(@NotNull PluginProviderContext context) {
-        return new YaminabePlugin(new YaminabeContext(
-            context.getDataDirectory(),
-            Modules.FACTORIES // TODO: collecting modules should be done by annotation processor
-        ));
+        return new YaminabePlugin(PluginStatus.NOT_LOADED);
     }
 }
