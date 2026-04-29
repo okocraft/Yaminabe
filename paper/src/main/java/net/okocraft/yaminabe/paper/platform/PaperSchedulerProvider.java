@@ -1,4 +1,4 @@
-package net.okocraft.paper.platform;
+package net.okocraft.yaminabe.paper.platform;
 
 import net.okocraft.yaminabe.common.platform.scheduler.Scheduler;
 import net.okocraft.yaminabe.common.platform.scheduler.SchedulerProvider;

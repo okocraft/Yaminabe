@@ -1,9 +1,9 @@
-package net.okocraft.paper.bootstrap;
+package net.okocraft.yaminabe.paper.bootstrap;
 
 import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.bootstrap.PluginBootstrap;
 import io.papermc.paper.plugin.bootstrap.PluginProviderContext;
-import net.okocraft.paper.plugin.YaminabePlugin;
+import net.okocraft.yaminabe.paper.plugin.YaminabePaperPlugin;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.YaminabeLogger;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,6 +20,6 @@ public final class YaminabeBootstrap implements PluginBootstrap {
 
     @Override
     public @NotNull JavaPlugin createPlugin(@NotNull PluginProviderContext context) {
-        return new YaminabePlugin(PluginStatus.NOT_LOADED);
+        return new YaminabePaperPlugin(PluginStatus.NOT_LOADED);
     }
 }

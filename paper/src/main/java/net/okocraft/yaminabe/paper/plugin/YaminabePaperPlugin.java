@@ -1,6 +1,6 @@
-package net.okocraft.paper.plugin;
+package net.okocraft.yaminabe.paper.plugin;
 
-import net.okocraft.paper.platform.PaperSchedulerProvider;
+import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.platform.scheduler.SchedulerProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -13,12 +13,12 @@ import java.util.function.Supplier;
 
 import static net.okocraft.yaminabe.common.YaminabeLogger.log;
 
-public class YaminabePlugin extends JavaPlugin {
+public class YaminabePaperPlugin extends JavaPlugin {
 
     private final SchedulerProvider scheduler;
     private PluginStatus status;
 
-    public YaminabePlugin(@NotNull PluginStatus initialStatus) {
+    public YaminabePaperPlugin(@NotNull PluginStatus initialStatus) {
         this.status = initialStatus;
         this.scheduler = new PaperSchedulerProvider(this);
     }
