@@ -14,7 +14,7 @@ slf4j = "2.0.17"
 
 # gradle plugins
 run-server = "3.0.2"
-shadow = "9.4.1"
+gradle-plugins = "1.8.3"
 
 [libraries]
 
@@ -30,9 +30,11 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "jun
 
 # testing environment
 mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 
 [plugins]
 
 run-server = { id = "xyz.jpenilla.run-paper", version.ref = "run-server" }
-shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+bundler = { id = "dev.siroshun.gradle.plugins.bundler", version.ref = "gradle-plugins" }
+jcommon = { id = "dev.siroshun.gradle.plugins.jcommon", version.ref = "gradle-plugins" }
