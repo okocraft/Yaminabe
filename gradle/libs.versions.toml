@@ -10,7 +10,7 @@ junit = "6.0.3"
 
 # testing environment
 mockito = "5.23.0"
-slf4j = "2.0.17"
+slf4j = "2.0.18"
 
 # gradle plugins
 run-server = "3.0.2"
