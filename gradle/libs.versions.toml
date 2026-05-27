@@ -6,7 +6,7 @@ annotations = "26.1.0"
 paper = "26.1.2.build.64-stable"
 
 # testing tool
-junit = "6.0.3"
+junit = "6.1.0"
 
 # testing environment
 mockito = "5.23.0"
