@@ -3,7 +3,7 @@
 annotations = "26.1.0"
 
 # platform api
-paper = "26.1.2.build.64-stable"
+paper = "26.1.2.build.65-stable"
 
 # testing tool
 junit = "6.1.0"
