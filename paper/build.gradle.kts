@@ -24,7 +24,7 @@ tasks {
 
         downloadPlugins {
             // See https://luckperms.net/download
-            url("https://download.luckperms.net/1631/bukkit/loader/LuckPerms-Bukkit-5.5.42.jar")
+            url("https://download.luckperms.net/1645/bukkit/loader/LuckPerms-Bukkit-5.5.57.jar")
         }
 
         args("--port=25560")
