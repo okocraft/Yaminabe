@@ -20,6 +20,6 @@ public final class YaminabeBootstrap implements PluginBootstrap {
 
     @Override
     public @NotNull JavaPlugin createPlugin(@NotNull PluginProviderContext context) {
-        return new YaminabePaperPlugin(PluginStatus.NOT_LOADED);
+        return new YaminabePaperPlugin(PluginStatus.NOT_LOADED, YaminabeBuiltinMessages.DEFINERS);
     }
 }

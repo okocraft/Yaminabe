@@ -13,7 +13,8 @@ final class VersionCommand {
         return Commands.literal("version")
             .requires(source -> source.getSender().hasPermission("yaminabe.command.version"))
             .executes(context -> {
-                context.getSource().getSender().sendPlainMessage("Yaminabe Version: " + VersionCommand.class.getPackage().getImplementationVersion());
+                String version = VersionCommand.class.getPackage().getImplementationVersion();
+                context.getSource().getSender().sendMessage(CommandMessages.VERSION_PRINT.apply(version));
                 return Command.SINGLE_SUCCESS;
             })
             .build();

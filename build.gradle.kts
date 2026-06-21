@@ -13,6 +13,8 @@ jcommon {
         compileOnlyApi(libs.annotations)
         compileOnlyApi(libs.slf4j.api)
 
+        implementation(libs.mcmsgdef)
+
         testImplementation(libs.junit.jupiter)
         testRuntimeOnly(libs.slf4j.simple)
     }

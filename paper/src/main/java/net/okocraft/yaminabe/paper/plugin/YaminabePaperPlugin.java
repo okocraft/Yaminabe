@@ -1,7 +1,9 @@
 package net.okocraft.yaminabe.paper.plugin;
 
+import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import net.okocraft.yaminabe.common.language.LanguageProvider;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
 import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
 import net.okocraft.yaminabe.common.PluginStatus;
@@ -11,6 +13,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 
@@ -19,10 +22,12 @@ import static net.okocraft.yaminabe.common.YaminabeLogger.log;
 public class YaminabePaperPlugin extends JavaPlugin {
 
     private final SchedulerProvider scheduler;
+    private final List<DefaultMessageDefiner> defaultMessages;
     private PluginStatus status;
 
-    public YaminabePaperPlugin(@NotNull PluginStatus initialStatus) {
+    public YaminabePaperPlugin(@NotNull PluginStatus initialStatus, @NotNull List<DefaultMessageDefiner> defaultMessages) {
         this.status = initialStatus;
+        this.defaultMessages = defaultMessages;
         this.scheduler = new PaperSchedulerProvider(this);
     }
 
@@ -32,6 +37,12 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.NOT_LOADED,
             "load",
             () -> {
+                try {
+                    LanguageProvider.load(this.getDataPath().resolve("languages"), this.defaultMessages);
+                } catch (Exception e) {
+                    log().error("Failed to load language files", e);
+                    return PluginStatus.EXCEPTION_OCCURRED;
+                }
                 return PluginStatus.LOADED;
             }
         );
@@ -58,6 +69,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.ENABLED,
             "disable",
             () -> {
+                LanguageProvider.unload();
                 return PluginStatus.DISABLED;
             }
         );

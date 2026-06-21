@@ -1,6 +1,7 @@
 [versions]
 # libraries
 annotations = "26.1.0"
+mcmsgdef = "1.3.0"
 
 # platform api
 paper = "26.1.2.build.72-stable"
@@ -20,6 +21,7 @@ gradle-plugins = "1.8.4"
 
 # libraries
 annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
+mcmsgdef = { module = "dev.siroshun.mcmsgdef:mcmsgdef", version.ref = "mcmsgdef" }
 
 # platform api
 paper = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
