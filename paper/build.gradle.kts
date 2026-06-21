@@ -26,7 +26,5 @@ tasks {
             // See https://luckperms.net/download
             url("https://download.luckperms.net/1645/bukkit/loader/LuckPerms-Bukkit-5.5.57.jar")
         }
-
-        args("--port=25560")
     }
 }
