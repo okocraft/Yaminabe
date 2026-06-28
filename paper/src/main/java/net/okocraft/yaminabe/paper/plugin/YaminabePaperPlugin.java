@@ -5,9 +5,11 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
+import net.okocraft.yaminabe.paper.listener.EventListeners;
 import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.platform.scheduler.SchedulerProvider;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -58,6 +60,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
                     Commands commands = event.registrar();
                     YaminabeCommands.register(commands);
                 });
+                EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
                 return PluginStatus.ENABLED;
             }
         );
@@ -69,6 +72,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.ENABLED,
             "disable",
             () -> {
+                HandlerList.unregisterAll(this);
                 LanguageProvider.unload();
                 return PluginStatus.DISABLED;
             }
