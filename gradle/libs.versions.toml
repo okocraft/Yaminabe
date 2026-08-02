@@ -15,7 +15,7 @@ slf4j = "2.0.18"
 
 # gradle plugins
 run-server = "3.0.2"
-gradle-plugins = "1.8.4"
+gradle-plugins = "1.8.5"
 
 [libraries]
 
