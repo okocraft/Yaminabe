@@ -226,3 +226,7 @@ gradle-app.setting
 ### Run Server ###
 
 /paper/run
+
+### Claude ###
+
+.claude/
