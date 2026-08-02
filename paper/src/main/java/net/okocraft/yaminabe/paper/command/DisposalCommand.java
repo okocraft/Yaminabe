@@ -1,0 +1,37 @@
+package net.okocraft.yaminabe.paper.command;
+
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.MenuType;
+import org.jetbrains.annotations.NotNullByDefault;
+
+import java.util.List;
+
+@NotNullByDefault
+final class DisposalCommand {
+
+    private static final String COMMAND_NAME = "disposal";
+
+    static List<String> getAliases() {
+        return List.of("trash");
+    }
+
+    static LiteralCommandNode<CommandSourceStack> createDisposalCommand() {
+        return Commands.literal(COMMAND_NAME)
+            .requires(source -> source.getSender().hasPermission("yaminabe.command.disposal"))
+            .executes(context -> {
+                if (!(context.getSource().getExecutor() instanceof Player player)) {
+                    context.getSource().getSender().sendMessage(CommandMessages.DISPOSAL_PLAYER_ONLY.apply("/" + COMMAND_NAME));
+                    return 0;
+                }
+
+                player.sendMessage(CommandMessages.DISPOSAL_OPENING);
+                player.openInventory(MenuType.GENERIC_9X4.create(player, CommandMessages.DISPOSAL_TITLE.asComponent()));
+                return Command.SINGLE_SUCCESS;
+            })
+            .build();
+    }
+}

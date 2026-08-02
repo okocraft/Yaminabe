@@ -18,6 +18,8 @@ public final class YaminabeCommands {
                 .then(VersionCommand.createVersionCommand())
                 .build()
         );
+
+        commands.register(DisposalCommand.createDisposalCommand(), DisposalCommand.getAliases());
     }
 
 }
