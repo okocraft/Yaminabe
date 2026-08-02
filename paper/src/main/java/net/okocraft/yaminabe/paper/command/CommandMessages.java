@@ -2,6 +2,7 @@ package net.okocraft.yaminabe.paper.command;
 
 import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
 import dev.siroshun.mcmsgdef.MessageKey;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.translation.Argument;
 
 final class CommandMessages {
@@ -22,6 +23,9 @@ final class CommandMessages {
     static final MessageKey HAT_PLACED = DEFINER.define(PREFIX + "hat.placed", "<gray>Enjoy your new hat.");
     static final MessageKey HAT_REMOVED = DEFINER.define(PREFIX + "hat.removed", "<gray>Your hat has been removed.");
     static final MessageKey.Arg1<String> HAT_PLAYER_ONLY = DEFINER.define(PREFIX + "hat.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
+    static final MessageKey.Arg2<Integer, Component> ITEM_GIVEN = DEFINER.define(PREFIX + "item.given", "<gray>Gave <aqua><amount></aqua> of <aqua><item></aqua><gray>.").with(amount -> Argument.numeric("amount", amount), item -> Argument.component("item", item));
+    static final MessageKey.Arg1<String> ITEM_PLAYER_ONLY = DEFINER.define(PREFIX + "item.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
 
     private CommandMessages() {
         throw new UnsupportedOperationException();
