@@ -20,6 +20,7 @@ public final class YaminabeCommands {
         );
 
         commands.register(DisposalCommand.createDisposalCommand(), DisposalCommand.getAliases());
+        commands.register(HatCommand.createHatCommand(), HatCommand.getAliases());
     }
 
 }
