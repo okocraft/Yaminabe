@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.run.server)
 }
 
-val minecraftVersion = "26.1.2"
+val minecraftVersion = libs.versions.paper.get().replaceAfter(".build", "").removeSuffix(".build")
 
 dependencies {
     implementation(projects.yaminabeCommon)
