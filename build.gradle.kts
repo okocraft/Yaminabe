@@ -16,6 +16,8 @@ jcommon {
         implementation(libs.mcmsgdef)
 
         testImplementation(libs.junit.jupiter)
+        testImplementation(libs.adventure.api)
+        testImplementation(libs.adventure.minimessage)
         testRuntimeOnly(libs.slf4j.simple)
     }
 

@@ -1,5 +1,6 @@
 [versions]
 # libraries
+adventure = "5.1.1"
 annotations = "26.1.0"
 mcmsgdef = "1.3.0"
 
@@ -20,6 +21,8 @@ gradle-plugins = "1.8.5"
 [libraries]
 
 # libraries
+adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
+adventure-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
 annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
 mcmsgdef = { module = "dev.siroshun.mcmsgdef:mcmsgdef", version.ref = "mcmsgdef" }
 
