@@ -10,10 +10,8 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.okocraft.yaminabe.common.text.FormatPermissions;
 import net.okocraft.yaminabe.common.text.FormatTag;
+import net.okocraft.yaminabe.common.text.MiniMessageText;
 import net.okocraft.yaminabe.paper.permission.PermissionCheckers;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -44,9 +42,6 @@ final class ItemNameCommand {
     private static final String NAME_ARGUMENT = "name";
 
     private static final int MAX_NAME_LENGTH = 200;
-
-    private static final char SECTION_SIGN = '§';
-    private static final char DELETE = '\u007f';
 
     static List<String> getAliases() {
         return List.of("iname");
@@ -82,44 +77,13 @@ final class ItemNameCommand {
             return builder.buildFuture();
         }
 
-        Component typed = withoutItalicOff(name);
-        String serialized = MiniMessage.miniMessage().serialize(typed);
+        String source = MiniMessageText.toEditableSource(PermissionCheckers.of(sender), FORMAT_PERMISSION_BASE, FORMAT_TAGS, name, MAX_NAME_LENGTH);
 
-        if (MAX_NAME_LENGTH < serialized.length() || !isTypableInCommand(serialized)) {
-            return builder.buildFuture();
-        }
-
-        if (!withoutItalicOff(parseName(sender, serialized)).compact().equals(typed.compact())) {
-            return builder.buildFuture();
-        }
-
-        if (serialized.toLowerCase(Locale.ROOT).startsWith(builder.getRemainingLowerCase())) {
-            builder.suggest(serialized);
+        if (source != null && source.toLowerCase(Locale.ROOT).startsWith(builder.getRemainingLowerCase())) {
+            builder.suggest(source);
         }
 
         return builder.buildFuture();
-    }
-
-    private static Component withoutItalicOff(Component component) {
-        return component.decoration(TextDecoration.ITALIC) == TextDecoration.State.FALSE ?
-            component.decoration(TextDecoration.ITALIC, TextDecoration.State.NOT_SET) :
-            component;
-    }
-
-    private static boolean isTypableInCommand(String name) {
-        for (int i = 0; i < name.length(); i++) {
-            char character = name.charAt(i);
-
-            if (character == SECTION_SIGN || character < ' ' || character == DELETE) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static Component parseName(CommandSender sender, String name) {
-        return FormatPermissions.createSerializer(PermissionCheckers.of(sender), FORMAT_PERMISSION_BASE, FORMAT_TAGS).deserialize(name);
     }
 
     private static int rename(CommandContext<CommandSourceStack> context, @Nullable String name) {
@@ -153,7 +117,7 @@ final class ItemNameCommand {
             return 0;
         }
 
-        Component component = parseName(sender, name).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+        Component component = MiniMessageText.withItalicOff(MiniMessageText.parse(PermissionCheckers.of(sender), FORMAT_PERMISSION_BASE, FORMAT_TAGS, name));
 
         item.setData(DataComponentTypes.CUSTOM_NAME, component);
         sender.sendMessage(CommandMessages.ITEMNAME_RENAMED.apply(component));
