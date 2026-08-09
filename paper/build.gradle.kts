@@ -9,6 +9,7 @@ dependencies {
     implementation(projects.yaminabeCommon)
 
     compileOnlyApi(libs.paper)
+    testImplementation(libs.paper)
 }
 
 bundler {
