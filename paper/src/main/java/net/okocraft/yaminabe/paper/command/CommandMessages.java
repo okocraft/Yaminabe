@@ -56,6 +56,20 @@ final class CommandMessages {
     static final MessageKey SKULL_TEXTURE_PREVENTED = DEFINER.define(PREFIX + "skull.texture-prevented", "<red>You are not allowed to get a skull from a texture.");
     static final MessageKey.Arg1<String> SKULL_PLAYER_ONLY = DEFINER.define(PREFIX + "skull.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
 
+    static final MessageKey.Arg1<String> WORKBENCH_PLAYER_ONLY = DEFINER.define(PREFIX + "workbench.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
+    static final MessageKey.Arg1<String> ANVIL_PLAYER_ONLY = DEFINER.define(PREFIX + "anvil.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
+    static final MessageKey.Arg1<String> CARTOGRAPHYTABLE_PLAYER_ONLY = DEFINER.define(PREFIX + "cartographytable.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
+    static final MessageKey.Arg1<String> GRINDSTONE_PLAYER_ONLY = DEFINER.define(PREFIX + "grindstone.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
+    static final MessageKey.Arg1<String> LOOM_PLAYER_ONLY = DEFINER.define(PREFIX + "loom.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
+    static final MessageKey.Arg1<String> SMITHINGTABLE_PLAYER_ONLY = DEFINER.define(PREFIX + "smithingtable.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
+    static final MessageKey.Arg1<String> STONECUTTER_PLAYER_ONLY = DEFINER.define(PREFIX + "stonecutter.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
     private CommandMessages() {
         throw new UnsupportedOperationException();
     }

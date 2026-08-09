@@ -1,9 +1,7 @@
 package net.okocraft.yaminabe.paper.command;
 
-import com.mojang.brigadier.Command;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.InventoryView;
@@ -16,6 +14,7 @@ import java.util.List;
 final class DisposalCommand {
 
     private static final String COMMAND_NAME = "disposal";
+    private static final String PERMISSION = "yaminabe.command.disposal";
 
     static List<String> getAliases() {
         return List.of("trash");
@@ -26,19 +25,13 @@ final class DisposalCommand {
     }
 
     static LiteralCommandNode<CommandSourceStack> createDisposalCommand(MenuFactory menuFactory) {
-        return Commands.literal(COMMAND_NAME)
-            .requires(source -> source.getSender().hasPermission("yaminabe.command.disposal"))
-            .executes(context -> {
-                if (!(context.getSource().getExecutor() instanceof Player player)) {
-                    context.getSource().getSender().sendMessage(CommandMessages.DISPOSAL_PLAYER_ONLY.apply("/" + COMMAND_NAME));
-                    return 0;
-                }
-
-                player.sendMessage(CommandMessages.DISPOSAL_OPENING);
-                player.openInventory(menuFactory.createMenu(player, CommandMessages.DISPOSAL_TITLE.asComponent()));
-                return Command.SINGLE_SUCCESS;
-            })
-            .build();
+        return MenuCommand.create(
+            COMMAND_NAME,
+            PERMISSION,
+            CommandMessages.DISPOSAL_OPENING,
+            CommandMessages.DISPOSAL_PLAYER_ONLY,
+            player -> menuFactory.createMenu(player, CommandMessages.DISPOSAL_TITLE.asComponent())
+        );
     }
 
     private static InventoryView createDisposalMenu(Player player, Component title) {

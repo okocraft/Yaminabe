@@ -25,6 +25,10 @@ public final class YaminabeCommands {
         commands.register(ItemLoreCommand.createItemLoreCommand(), ItemLoreCommand.getAliases());
         commands.register(ItemNameCommand.createItemNameCommand(), ItemNameCommand.getAliases());
         commands.register(SkullCommand.createSkullCommand());
+
+        for (WorkstationCommands workstation : WorkstationCommands.values()) {
+            commands.register(workstation.createCommand(), workstation.getAliases());
+        }
     }
 
 }
