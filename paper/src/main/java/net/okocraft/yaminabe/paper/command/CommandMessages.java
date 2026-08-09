@@ -48,6 +48,14 @@ final class CommandMessages {
     static final MessageKey.Arg1<Integer> ITEMLORE_TOO_MANY_LINES = DEFINER.define(PREFIX + "itemlore.too-many-lines", "<red>The lore can have at most <aqua><limit></aqua><red> lines.").with(limit -> Argument.numeric("limit", limit));
     static final MessageKey.Arg1<String> ITEMLORE_PLAYER_ONLY = DEFINER.define(PREFIX + "itemlore.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
 
+    static final MessageKey.Arg1<String> SKULL_GIVEN = DEFINER.define(PREFIX + "skull.given", "<gray>Gave the skull of <aqua><owner></aqua><gray>.").with(owner -> Argument.string("owner", owner));
+    static final MessageKey SKULL_INVALID_NAME = DEFINER.define(PREFIX + "skull.invalid-name", "<red>The owner must be a player name.");
+    static final MessageKey SKULL_INVALID_OWNER = DEFINER.define(PREFIX + "skull.invalid-owner", "<red>The owner must be a player name, a texture hash or a texture value.");
+    static final MessageKey SKULL_ONLINE_PREVENTED = DEFINER.define(PREFIX + "skull.online-prevented", "<red>You are not allowed to get the skull of another player.");
+    static final MessageKey SKULL_OFFLINE_PREVENTED = DEFINER.define(PREFIX + "skull.offline-prevented", "<red>You are not allowed to get the skull of a player who is not online.");
+    static final MessageKey SKULL_TEXTURE_PREVENTED = DEFINER.define(PREFIX + "skull.texture-prevented", "<red>You are not allowed to get a skull from a texture.");
+    static final MessageKey.Arg1<String> SKULL_PLAYER_ONLY = DEFINER.define(PREFIX + "skull.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
     private CommandMessages() {
         throw new UnsupportedOperationException();
     }

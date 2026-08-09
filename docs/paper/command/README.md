@@ -10,6 +10,7 @@ Commands provided by Yaminabe on Paper/Folia.
 | [`/item`](item.md)         | `i`             | Gives an item to yourself.                   |
 | [`/itemlore`](itemlore.md) | `lore`, `ilore` | Edits the lore of the item in the main hand. |
 | [`/itemname`](itemname.md) | `iname`         | Renames the item in the main hand.           |
+| [`/skull`](skull.md)       | -               | Gives a player head.                         |
 
 Commands that take text written in MiniMessage share the permissions described in
 [Format permissions](../../format-permissions.md).

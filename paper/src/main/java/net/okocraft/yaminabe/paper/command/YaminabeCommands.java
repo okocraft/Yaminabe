@@ -24,6 +24,7 @@ public final class YaminabeCommands {
         commands.register(ItemCommand.createItemCommand(), ItemCommand.getAliases());
         commands.register(ItemLoreCommand.createItemLoreCommand(), ItemLoreCommand.getAliases());
         commands.register(ItemNameCommand.createItemNameCommand(), ItemNameCommand.getAliases());
+        commands.register(SkullCommand.createSkullCommand());
     }
 
 }
