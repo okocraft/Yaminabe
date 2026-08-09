@@ -72,7 +72,7 @@ target player: the target is only resolved when the command runs, which is after
 | `transition`   | `<transition>`                                                          |
 | `shadow-color` | `<shadow>`                                                              |
 | `font`         | `<font>`                                                                |
-| `translatable` | `<lang>`, `<key>`                                                       |
+| `translatable` | `<lang>`, `<lang_or>`, `<key>`                                          |
 | `reset`        | `<reset>`                                                               |
 
 Tags outside this table are never available, whatever permissions are granted. An item name is rendered as a single,
