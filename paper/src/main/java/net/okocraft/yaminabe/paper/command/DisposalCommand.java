@@ -4,7 +4,9 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.MenuType;
 import org.jetbrains.annotations.NotNullByDefault;
 
@@ -20,6 +22,10 @@ final class DisposalCommand {
     }
 
     static LiteralCommandNode<CommandSourceStack> createDisposalCommand() {
+        return createDisposalCommand(DisposalCommand::createDisposalMenu);
+    }
+
+    static LiteralCommandNode<CommandSourceStack> createDisposalCommand(MenuFactory menuFactory) {
         return Commands.literal(COMMAND_NAME)
             .requires(source -> source.getSender().hasPermission("yaminabe.command.disposal"))
             .executes(context -> {
@@ -29,9 +35,18 @@ final class DisposalCommand {
                 }
 
                 player.sendMessage(CommandMessages.DISPOSAL_OPENING);
-                player.openInventory(MenuType.GENERIC_9X4.create(player, CommandMessages.DISPOSAL_TITLE.asComponent()));
+                player.openInventory(menuFactory.createMenu(player, CommandMessages.DISPOSAL_TITLE.asComponent()));
                 return Command.SINGLE_SUCCESS;
             })
             .build();
+    }
+
+    private static InventoryView createDisposalMenu(Player player, Component title) {
+        return MenuType.GENERIC_9X4.create(player, title);
+    }
+
+    @FunctionalInterface
+    interface MenuFactory {
+        InventoryView createMenu(Player player, Component title);
     }
 }
