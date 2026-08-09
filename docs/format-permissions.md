@@ -7,6 +7,7 @@ its nodes under, and the groups it offers at all, differ.
 
 | Command                                  | Base node                          |
 |------------------------------------------|------------------------------------|
+| [`/itemlore`](paper/command/itemlore.md) | `yaminabe.command.itemlore.format` |
 | [`/itemname`](paper/command/itemname.md) | `yaminabe.command.itemname.format` |
 
 A tag that is not allowed is left exactly as it was typed, and is shown as text. Nothing is rejected and no message is
