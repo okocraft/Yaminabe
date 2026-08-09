@@ -236,8 +236,8 @@ class SkullCommandTest {
     void testTextureValueWithAnotherTextureIsGiven() throws Exception {
         TestSources.grant(this.player, TEXTURE);
         String value = Base64.getEncoder().encodeToString(("{\"textures\":{\"SKIN\":{\"url\":\"https://textures.minecraft.net/texture/" + HASH
-            + "\",\"metadata\":{\"model\":\"slim\"}},\"CAPE\":{\"url\":\"https://textures.minecraft.net/texture/" + HASH
-            + "\"}}}").getBytes(StandardCharsets.UTF_8));
+                                                           + "\",\"metadata\":{\"model\":\"slim\"}},\"CAPE\":{\"url\":\"https://textures.minecraft.net/texture/" + HASH
+                                                           + "\"}}}").getBytes(StandardCharsets.UTF_8));
 
         Assertions.assertEquals(1, this.tester.execute(this.source, "skull " + value));
 
@@ -248,7 +248,7 @@ class SkullCommandTest {
     void testTextureValueWithAnotherTextureOfAnotherHostIsNotAccepted() throws Exception {
         TestSources.grant(this.player, TEXTURE);
         String value = Base64.getEncoder().encodeToString(("{\"textures\":{\"SKIN\":{\"url\":\"https://textures.minecraft.net/texture/" + HASH
-            + "\"},\"CAPE\":{\"url\":\"https://example.com/cape.png\"}}}").getBytes(StandardCharsets.UTF_8));
+                                                           + "\"},\"CAPE\":{\"url\":\"https://example.com/cape.png\"}}}").getBytes(StandardCharsets.UTF_8));
 
         Assertions.assertEquals(0, this.tester.execute(this.source, "skull " + value));
 
