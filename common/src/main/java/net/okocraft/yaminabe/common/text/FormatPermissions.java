@@ -31,9 +31,9 @@ public final class FormatPermissions {
     /**
      * Creates a {@link MiniMessage} that resolves only the tags the given {@link PermissionChecker} allows.
      *
-     * @param checker the {@link PermissionChecker} to check permissions against
+     * @param checker        the {@link PermissionChecker} to check permissions against
      * @param permissionBase the permission node the tag groups are placed under
-     * @param tags the {@link FormatTag}s to offer
+     * @param tags           the {@link FormatTag}s to offer
      * @return the created {@link MiniMessage}
      */
     public static MiniMessage createSerializer(PermissionChecker checker, String permissionBase, Set<FormatTag> tags) {
@@ -43,9 +43,9 @@ public final class FormatPermissions {
     /**
      * Creates a {@link TagResolver} that resolves only the tags the given {@link PermissionChecker} allows.
      *
-     * @param checker the {@link PermissionChecker} to check permissions against
+     * @param checker        the {@link PermissionChecker} to check permissions against
      * @param permissionBase the permission node the tag groups are placed under
-     * @param tags the {@link FormatTag}s to offer
+     * @param tags           the {@link FormatTag}s to offer
      * @return the created {@link TagResolver}
      */
     public static TagResolver createTagResolver(PermissionChecker checker, String permissionBase, Set<FormatTag> tags) {

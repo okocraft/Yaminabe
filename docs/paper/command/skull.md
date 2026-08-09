@@ -4,12 +4,12 @@ Gives a player head. This is a port of the EssentialsX `/skull` command.
 
 ## Usage
 
-| Command                  | Description                                                          |
-|--------------------------|----------------------------------------------------------------------|
-| `/skull`                 | Gives your own head.                                                 |
-| `/skull <player>`        | Gives the head of the given player.                                  |
-| `/skull <hash>`          | Gives a head wearing the skin of the given texture hash.             |
-| `/skull <texture value>` | Gives a head wearing the skin of the given Base64 encoded texture.   |
+| Command                  | Description                                                        |
+|--------------------------|--------------------------------------------------------------------|
+| `/skull`                 | Gives your own head.                                               |
+| `/skull <player>`        | Gives the head of the given player.                                |
+| `/skull <hash>`          | Gives a head wearing the skin of the given texture hash.           |
+| `/skull <texture value>` | Gives a head wearing the skin of the given Base64 encoded texture. |
 
 This command can only be run by an in-game player. The head is always a newly created one; an item held in the hand is
 never modified.
@@ -38,9 +38,9 @@ sender may use them.
 
 ### How the owner is resolved
 
-A name that belongs to a player who is online is resolved right away, using the profile the server already holds, so
-the head wears their current skin. A player you cannot see, such as one hidden by a vanish plugin, does not count as
-online here, so that this command does not tell you who is on the server invisibly.
+A name that belongs to a player who is online is resolved right away, using the profile the server already holds, so the
+head wears their current skin. A player you cannot see, such as one hidden by a vanish plugin, does not count as online
+here, so that this command does not tell you who is on the server invisibly.
 
 A name that belongs to nobody online is stored as a name alone, the way vanilla stores
 `/give @s player_head[profile="Notch"]`, and is left for the client to resolve when it renders the head, as vanilla
@@ -53,19 +53,19 @@ your own name without `yaminabe.command.skull.online`. A hash and a texture valu
 
 ### The name of the head
 
-This command does not set a custom name. A head that carries a player name is named by vanilla, as
-「◯◯の頭」 is, and a head created from a hash or a texture value keeps the plain name of a player head. Use
+This command does not set a custom name. A head that carries a player name is named by vanilla, as 「◯◯の頭」 is, and a
+head created from a hash or a texture value keeps the plain name of a player head. Use
 [`/itemname`](itemname.md) to name it. The message this command replies with names a head created from a texture after
 the first eight characters of its hash, as a whole hash is too long to read.
 
 ## Permissions
 
-| Permission                       | Description                                                       |
-|----------------------------------|-------------------------------------------------------------------|
-| `yaminabe.command.skull`         | Required to run `/skull`, which gives your own head.              |
-| `yaminabe.command.skull.online`  | Allows getting the head of another player who is online.          |
-| `yaminabe.command.skull.offline` | Allows getting the head of a player who is not online.            |
-| `yaminabe.command.skull.texture` | Allows getting a head from a texture hash or a texture value.     |
+| Permission                       | Description                                                   |
+|----------------------------------|---------------------------------------------------------------|
+| `yaminabe.command.skull`         | Required to run `/skull`, which gives your own head.          |
+| `yaminabe.command.skull.online`  | Allows getting the head of another player who is online.      |
+| `yaminabe.command.skull.offline` | Allows getting the head of a player who is not online.        |
+| `yaminabe.command.skull.texture` | Allows getting a head from a texture hash or a texture value. |
 
 The three permissions under `yaminabe.command.skull` are independent of one another: which one is read is decided by the
 argument alone, so a name that belongs to nobody online is never covered by `online`, whether or not that name belongs

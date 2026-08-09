@@ -26,10 +26,10 @@ public final class MiniMessageText {
     /**
      * Parses the given text, resolving only the tags the given {@link PermissionChecker} allows.
      *
-     * @param checker the {@link PermissionChecker} to check permissions against
+     * @param checker        the {@link PermissionChecker} to check permissions against
      * @param permissionBase the permission node the tag groups are placed under
-     * @param tags the {@link FormatTag}s to offer
-     * @param text the text to parse
+     * @param tags           the {@link FormatTag}s to offer
+     * @param text           the text to parse
      * @return the parsed {@link Component}
      */
     public static Component parse(PermissionChecker checker, String permissionBase, Set<FormatTag> tags, String text) {
@@ -57,11 +57,11 @@ public final class MiniMessageText {
      * <p>
      * The {@code <!italic>} of {@link #withItalicOff} is left out, so that what is suggested is what was typed.
      *
-     * @param checker the {@link PermissionChecker} to check permissions against
+     * @param checker        the {@link PermissionChecker} to check permissions against
      * @param permissionBase the permission node the tag groups are placed under
-     * @param tags the {@link FormatTag}s to offer
-     * @param text the text to serialize
-     * @param maxLength the maximum length of the serialized text
+     * @param tags           the {@link FormatTag}s to offer
+     * @param text           the text to serialize
+     * @param maxLength      the maximum length of the serialized text
      * @return the serialized text, or {@code null} if it cannot be retyped as it is
      */
     public static @Nullable String toEditableSource(PermissionChecker checker, String permissionBase, Set<FormatTag> tags, Component text, int maxLength) {

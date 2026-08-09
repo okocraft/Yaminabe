@@ -103,16 +103,16 @@ state (`<selector>`, `<score>`, `<nbt>`). This is the same set of groups as [`/i
 - EssentialsX offers `add`, `set` and `clear` only. Yaminabe also offers `insert` and `remove`, so that a line can be
   edited without retyping the ones after it.
 - EssentialsX uses legacy color codes (`&c`) gated behind `essentials.itemlore.color`, `.format`, `.magic` and `.rgb`,
-  with per-color overrides such as `essentials.itemlore.red`, and strips the codes the player may not use. Yaminabe
-  uses MiniMessage gated behind `yaminabe.command.itemlore.format.<group>`, with the same kind of per-color and
+  with per-color overrides such as `essentials.itemlore.red`, and strips the codes the player may not use. Yaminabe uses
+  MiniMessage gated behind `yaminabe.command.itemlore.format.<group>`, with the same kind of per-color and
   per-decoration overrides, and leaves the tags that are not allowed as they were typed.
 - EssentialsX has no per-item restriction on this command. Yaminabe uses the same kind of allowlist as
   [`/itemname`](itemname.md) does, so that the two commands can be restricted together.
 - EssentialsX takes the maximum number of lines from the `max-itemlore-lines` setting (10 by default) and bypasses it
   with `essentials.itemlore.bypass`. Yaminabe fixes the limit at 10 and raises it to 256 with
   `yaminabe.command.itemlore.ignore-line-limit`. EssentialsX has no limit on the length of a line.
-- EssentialsX trims the text it is given and requires `add` to be given some, so a blank line cannot be added.
-  Yaminabe keeps the text as it was typed, so that a line can be indented or left blank as a spacer.
+- EssentialsX trims the text it is given and requires `add` to be given some, so a blank line cannot be added. Yaminabe
+  keeps the text as it was typed, so that a line can be indented or left blank as a spacer.
 - EssentialsX leaves a line italicised, as vanilla renders lore in italic by default. Yaminabe disables the italic
   decoration unless it is set explicitly.
 - EssentialsX reports success when `clear` is run on an item that has no lore. Yaminabe reports that there is no lore.

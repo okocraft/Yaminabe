@@ -19,21 +19,21 @@ policy, `e`-prefixed aliases (`edisposal`, `ehat`, ...) are never ported.
 
 Already implemented. See [Commands](paper/command/README.md) for details.
 
-| Command             | Yaminabe aliases | Description                      | Notes                                                                                 |
-|---------------------|------------------|----------------------------------|---------------------------------------------------------------------------------------|
-| `/anvil`            | -                | Opens up an anvil.               | The anvil never takes damage, as no anvil block is involved.                          |
-| `/cartographytable` | -                | Opens up a cartography table.    | `carttable` is not registered.                                                        |
-| `/disposal`         | `trash`          | Opens a portable disposal menu.  |                                                                                       |
-| `/grindstone`       | -                | Opens up a grindstone.           |                                                                                       |
-| `/hat`              | `head`           | Get some cool new headgear.      | EssentialsX gives `head` to both `/hat` and `/skull`; Yaminabe assigns it to `/hat`.  |
-| `/item`             | `i`              | Spawn an item.                   |                                                                                       |
-| `/itemlore`         | `lore`, `ilore`  | Edit the lore of an item.        | Text is parsed as MiniMessage.                                                        |
-| `/itemname`         | `iname`          | Names an item.                   | Text is parsed as MiniMessage.                                                        |
-| `/loom`             | -                | Opens up a loom.                 |                                                                                       |
-| `/skull`            | -                | Set the owner of a player skull. | `head` / `playerskull` are not registered (`head` belongs to `/hat`).                 |
-| `/smithingtable`    | -                | Opens up a smithing table.       | `smithtable` is not registered.                                                       |
-| `/stonecutter`      | -                | Opens up a stonecutter.          |                                                                                       |
-| `/workbench`        | `craft`          | Opens up a workbench.            | `wb` / `wbench` are not registered.                                                   |
+| Command             | Yaminabe aliases | Description                      | Notes                                                                                |
+|---------------------|------------------|----------------------------------|--------------------------------------------------------------------------------------|
+| `/anvil`            | -                | Opens up an anvil.               | The anvil never takes damage, as no anvil block is involved.                         |
+| `/cartographytable` | -                | Opens up a cartography table.    | `carttable` is not registered.                                                       |
+| `/disposal`         | `trash`          | Opens a portable disposal menu.  |                                                                                      |
+| `/grindstone`       | -                | Opens up a grindstone.           |                                                                                      |
+| `/hat`              | `head`           | Get some cool new headgear.      | EssentialsX gives `head` to both `/hat` and `/skull`; Yaminabe assigns it to `/hat`. |
+| `/item`             | `i`              | Spawn an item.                   |                                                                                      |
+| `/itemlore`         | `lore`, `ilore`  | Edit the lore of an item.        | Text is parsed as MiniMessage.                                                       |
+| `/itemname`         | `iname`          | Names an item.                   | Text is parsed as MiniMessage.                                                       |
+| `/loom`             | -                | Opens up a loom.                 |                                                                                      |
+| `/skull`            | -                | Set the owner of a player skull. | `head` / `playerskull` are not registered (`head` belongs to `/hat`).                |
+| `/smithingtable`    | -                | Opens up a smithing table.       | `smithtable` is not registered.                                                      |
+| `/stonecutter`      | -                | Opens up a stonecutter.          |                                                                                      |
+| `/workbench`        | `craft`          | Opens up a workbench.            | `wb` / `wbench` are not registered.                                                  |
 
 Yaminabe also provides `/yaminabe`, which has no EssentialsX counterpart.
 

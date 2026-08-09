@@ -7,7 +7,7 @@ import java.util.List;
 
 @NullMarked
 public class EventListeners {
-    
+
     public static List<Listener> createListeners() {
         return List.of();
     }

@@ -6,9 +6,9 @@ Aliases: `craft`
 
 ## Usage
 
-| Command      | Description                     |
-|--------------|---------------------------------|
-| `/workbench` | Opens the crafting table menu.  |
+| Command      | Description                    |
+|--------------|--------------------------------|
+| `/workbench` | Opens the crafting table menu. |
 
 This command can only be run by an in-game player.
 
