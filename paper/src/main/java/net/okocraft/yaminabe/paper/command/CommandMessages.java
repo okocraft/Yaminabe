@@ -27,6 +27,13 @@ final class CommandMessages {
     static final MessageKey.Arg2<Integer, Component> ITEM_GIVEN = DEFINER.define(PREFIX + "item.given", "<gray>Gave <aqua><amount></aqua> of <aqua><item></aqua><gray>.").with(amount -> Argument.numeric("amount", amount), item -> Argument.component("item", item));
     static final MessageKey.Arg1<String> ITEM_PLAYER_ONLY = DEFINER.define(PREFIX + "item.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
 
+    static final MessageKey ITEMNAME_NO_ITEM = DEFINER.define(PREFIX + "itemname.no-item", "<red>You must hold an item to rename it.");
+    static final MessageKey ITEMNAME_CLEARED = DEFINER.define(PREFIX + "itemname.cleared", "<gray>Cleared the name of the held item.");
+    static final MessageKey.Arg1<Component> ITEMNAME_RENAMED = DEFINER.define(PREFIX + "itemname.renamed", "<gray>Renamed the held item to <aqua><name></aqua><gray>.").with(name -> Argument.component("name", name));
+    static final MessageKey.Arg1<Component> ITEMNAME_PREVENTED = DEFINER.define(PREFIX + "itemname.prevented", "<red>You are not allowed to rename <aqua><item></aqua><red>.").with(item -> Argument.component("item", item));
+    static final MessageKey.Arg1<Integer> ITEMNAME_TOO_LONG = DEFINER.define(PREFIX + "itemname.too-long", "<red>The name must be at most <aqua><limit></aqua><red> characters.").with(limit -> Argument.numeric("limit", limit));
+    static final MessageKey.Arg1<String> ITEMNAME_PLAYER_ONLY = DEFINER.define(PREFIX + "itemname.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
+
     private CommandMessages() {
         throw new UnsupportedOperationException();
     }
