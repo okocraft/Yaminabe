@@ -25,7 +25,7 @@ public final class TestSources {
         return of(sender, null);
     }
 
-    private static CommandSourceStack of(CommandSender sender, Player executor) {
+    public static CommandSourceStack of(CommandSender sender, Player executor) {
         CommandSourceStack source = Mockito.mock(CommandSourceStack.class);
         Mockito.when(source.getSender()).thenReturn(sender);
         Mockito.when(source.getExecutor()).thenReturn(executor);
