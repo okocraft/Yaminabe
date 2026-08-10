@@ -9,6 +9,7 @@ its nodes under, and the groups it offers at all, differ.
 |------------------------------------------|------------------------------------|
 | [`/itemlore`](paper/command/itemlore.md) | `yaminabe.command.itemlore.format` |
 | [`/itemname`](paper/command/itemname.md) | `yaminabe.command.itemname.format` |
+| [`/sign`](paper/command/sign.md)         | `yaminabe.command.sign.format`     |
 
 A tag that is not allowed is left exactly as it was typed, and is shown as text. Nothing is rejected and no message is
 sent, so a player without any of these permissions can still write `<red>` and get the six characters `<red>`.

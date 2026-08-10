@@ -35,7 +35,7 @@ class PaperRegionSchedulerTest {
     void testTaskIsRunRightAwayOnTheOwningThread() {
         Mockito.when(this.server.isOwnedByCurrentRegion(this.location)).thenReturn(true);
 
-        this.scheduler.execute(this.location, this.runs::incrementAndGet);
+        Assertions.assertTrue(this.scheduler.execute(this.location, this.runs::incrementAndGet));
 
         Assertions.assertEquals(1, this.runs.get());
         Mockito.verify(this.server, Mockito.never()).getRegionScheduler();
@@ -45,7 +45,7 @@ class PaperRegionSchedulerTest {
     void testTaskIsHandedOverOnAnotherThread() {
         Mockito.when(this.server.isOwnedByCurrentRegion(this.location)).thenReturn(false);
 
-        this.scheduler.execute(this.location, this.runs::incrementAndGet);
+        Assertions.assertFalse(this.scheduler.execute(this.location, this.runs::incrementAndGet));
 
         Assertions.assertEquals(0, this.runs.get(), "The task is left to the owning thread, so it has not run yet.");
 

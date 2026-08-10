@@ -5,7 +5,6 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
-import net.okocraft.yaminabe.common.platform.scheduler.SchedulerProvider;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
 import net.okocraft.yaminabe.paper.listener.EventListeners;
 import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
@@ -23,7 +22,7 @@ import static net.okocraft.yaminabe.common.YaminabeLogger.log;
 
 public class YaminabePaperPlugin extends JavaPlugin {
 
-    private final SchedulerProvider scheduler;
+    private final PaperSchedulerProvider scheduler;
     private final List<DefaultMessageDefiner> defaultMessages;
     private PluginStatus status;
 
@@ -58,7 +57,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
             () -> {
                 this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
                     Commands commands = event.registrar();
-                    YaminabeCommands.register(commands);
+                    YaminabeCommands.register(commands, this.scheduler.region());
                 });
                 EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
                 return PluginStatus.ENABLED;

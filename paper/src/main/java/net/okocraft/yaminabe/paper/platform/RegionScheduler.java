@@ -14,11 +14,13 @@ public interface RegionScheduler {
      * <p>
      * The task is run right away when the calling thread already owns the location, so that a caller which reports
      * what the task did can do so before it returns. Otherwise the task is left to the owning thread and this method
-     * returns before the task has run.
+     * returns before the task has run, so anything the task wrote may only be read when {@code true} is returned.
      *
      * @param location the location the task touches
      * @param task     the task to run
+     * @return {@code true} if the task has already run when this method returns, or {@code false} if it was left to
+     * the thread that owns the location
      */
-    void execute(@NotNull Location location, @NotNull Runnable task);
+    boolean execute(@NotNull Location location, @NotNull Runnable task);
 
 }

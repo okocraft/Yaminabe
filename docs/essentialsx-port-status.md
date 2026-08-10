@@ -5,8 +5,8 @@ against Yaminabe.
 
 | Status                      | Count |
 |-----------------------------|-------|
-| [Ported](#ported)           | 13    |
-| [Planned](#planned)         | 15    |
+| [Ported](#ported)           | 14    |
+| [Planned](#planned)         | 14    |
 | [Not planned](#not-planned) | 125   |
 
 Commands from the companion plugins (`EssentialsSpawn`: `/spawn`, `/setspawn`, and `EssentialsChat`,
@@ -24,6 +24,7 @@ Already implemented. See [Commands](paper/command/README.md) for details.
 | `/anvil`            | -                | Opens up an anvil.               | The anvil never takes damage, as no anvil block is involved.                         |
 | `/cartographytable` | -                | Opens up a cartography table.    | `carttable` is not registered.                                                       |
 | `/disposal`         | `trash`          | Opens a portable disposal menu.  |                                                                                      |
+| `/editsign`         | -                | Edit a sign in the world.        | Registered as `/sign`, keeping `editsign` as an alias. Text is parsed as MiniMessage. |
 | `/grindstone`       | -                | Opens up a grindstone.           |                                                                                      |
 | `/hat`              | `head`           | Get some cool new headgear.      | EssentialsX gives `head` to both `/hat` and `/skull`; Yaminabe assigns it to `/hat`. |
 | `/item`             | `i`              | Spawn an item.                   |                                                                                      |
@@ -45,7 +46,6 @@ Planned to port. Aliases still need to be decided per the policy in `CLAUDE.md`.
 |---------------|------------------------------------------------------------------------------------------|---------------------------------------------------------|
 | `/afk`        | `away`                                                                                   | Marks you as away-from-keyboard.                        |
 | `/back`       | `return`                                                                                 | Teleports you to your location prior to tp/spawn/warp.  |
-| `/editsign`   | `sign`                                                                                   | Edits a sign in the world.                              |
 | `/enderchest` | `echest`, `endersee`, `ec`                                                               | Lets you see inside an enderchest.                      |
 | `/fly`        | -                                                                                        | Take off, and soar!                                     |
 | `/gamemode`   | `gm`, `gma`, `gmc`, `gms`, `gmsp`, `adventure`, `creative`, `survival`, `spectator`, ... | Change player gamemode.                                 |

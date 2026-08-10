@@ -48,6 +48,28 @@ final class CommandMessages {
     static final MessageKey.Arg1<Integer> ITEMLORE_TOO_MANY_LINES = DEFINER.define(PREFIX + "itemlore.too-many-lines", "<red>The lore can have at most <aqua><limit></aqua><red> lines.").with(limit -> Argument.numeric("limit", limit));
     static final MessageKey.Arg1<String> ITEMLORE_PLAYER_ONLY = DEFINER.define(PREFIX + "itemlore.player-only", "<red>Only in-game players can use <aqua><command></aqua><red>.").with(command -> Argument.string("command", command));
 
+    static final MessageKey.Arg1<String> SIGN_PLAYER_ONLY = DEFINER.define(PREFIX + "sign.player-only", "<red>Only in-game players can use <aqua><command></aqua><red> without a position.").with(command -> Argument.string("command", command));
+    static final MessageKey SIGN_NOT_LOOKED_AT = DEFINER.define(PREFIX + "sign.not-looked-at", "<red>You must be looking at a sign.");
+    static final MessageKey.Arg3<Integer, Integer, Integer> SIGN_NOT_FOUND = DEFINER.define(PREFIX + "sign.not-found", "<red>There is no sign at <aqua><x> <y> <z></aqua><red>.").with(x -> Argument.numeric("x", x), y -> Argument.numeric("y", y), z -> Argument.numeric("z", z));
+    static final MessageKey.Arg3<Integer, Integer, Integer> SIGN_CHUNK_NOT_LOADED = DEFINER.define(PREFIX + "sign.chunk-not-loaded", "<red>The chunk at <aqua><x> <y> <z></aqua><red> is not loaded.").with(x -> Argument.numeric("x", x), y -> Argument.numeric("y", y), z -> Argument.numeric("z", z));
+    static final MessageKey SIGN_IS_WAXED = DEFINER.define(PREFIX + "sign.is-waxed", "<red>You are not allowed to edit a waxed sign.");
+    static final MessageKey SIGN_EDIT_PREVENTED = DEFINER.define(PREFIX + "sign.edit-prevented", "<red>Editing this sign was prevented.");
+    static final MessageKey.Arg1<Integer> SIGN_TOO_LONG = DEFINER.define(PREFIX + "sign.too-long", "<red>Each line must be at most <aqua><limit></aqua><red> characters.").with(limit -> Argument.numeric("limit", limit));
+    static final MessageKey.Arg1<Integer> SIGN_LAST_LINE_NOT_EMPTY = DEFINER.define(PREFIX + "sign.last-line-not-empty", "<red>Line <aqua><number></aqua><red> must be empty to insert a line.").with(number -> Argument.numeric("number", number));
+    static final MessageKey.Arg2<Integer, Component> SIGN_SET = DEFINER.define(PREFIX + "sign.set", "<gray>Set line <aqua><number></aqua><gray> of the sign to <aqua><line></aqua><gray>.").with(number -> Argument.numeric("number", number), line -> Argument.component("line", line));
+    static final MessageKey.Arg2<Integer, Component> SIGN_INSERTED = DEFINER.define(PREFIX + "sign.inserted", "<gray>Inserted <aqua><line></aqua><gray> at line <aqua><number></aqua><gray> of the sign.").with(number -> Argument.numeric("number", number), line -> Argument.component("line", line));
+    static final MessageKey.Arg1<Integer> SIGN_REMOVED = DEFINER.define(PREFIX + "sign.removed", "<gray>Removed line <aqua><number></aqua><gray> from the sign.").with(number -> Argument.numeric("number", number));
+    static final MessageKey SIGN_CLEARED = DEFINER.define(PREFIX + "sign.cleared", "<gray>Cleared the sign.");
+    static final MessageKey.Arg1<Integer> SIGN_CLEARED_LINE = DEFINER.define(PREFIX + "sign.cleared-line", "<gray>Cleared line <aqua><number></aqua><gray> of the sign.").with(number -> Argument.numeric("number", number));
+    static final MessageKey SIGN_ALREADY_EMPTY = DEFINER.define(PREFIX + "sign.already-empty", "<red>The sign is already empty.");
+    static final MessageKey.Arg1<Integer> SIGN_LINE_ALREADY_EMPTY = DEFINER.define(PREFIX + "sign.line-already-empty", "<red>Line <aqua><number></aqua><red> of the sign is already empty.").with(number -> Argument.numeric("number", number));
+    static final MessageKey SIGN_GLOWING_ENABLED = DEFINER.define(PREFIX + "sign.glowing-enabled", "<gray>The text of the sign now glows.");
+    static final MessageKey SIGN_GLOWING_DISABLED = DEFINER.define(PREFIX + "sign.glowing-disabled", "<gray>The text of the sign no longer glows.");
+    static final MessageKey.Arg1<String> SIGN_COLOR_SET = DEFINER.define(PREFIX + "sign.color-set", "<gray>Set the color of the sign to <aqua><color></aqua><gray>.").with(color -> Argument.string("color", color));
+    static final MessageKey.Arg1<String> SIGN_INVALID_COLOR = DEFINER.define(PREFIX + "sign.invalid-color", "<red><aqua><color></aqua><red> is not a dye color.").with(color -> Argument.string("color", color));
+    static final MessageKey SIGN_WAXED_ENABLED = DEFINER.define(PREFIX + "sign.waxed-enabled", "<gray>The sign is now waxed.");
+    static final MessageKey SIGN_WAXED_DISABLED = DEFINER.define(PREFIX + "sign.waxed-disabled", "<gray>The sign is no longer waxed.");
+
     static final MessageKey.Arg1<String> SKULL_GIVEN = DEFINER.define(PREFIX + "skull.given", "<gray>Gave the skull of <aqua><owner></aqua><gray>.").with(owner -> Argument.string("owner", owner));
     static final MessageKey SKULL_INVALID_NAME = DEFINER.define(PREFIX + "skull.invalid-name", "<red>The owner must be a player name.");
     static final MessageKey SKULL_INVALID_OWNER = DEFINER.define(PREFIX + "skull.invalid-owner", "<red>The owner must be a player name, a texture hash or a texture value.");

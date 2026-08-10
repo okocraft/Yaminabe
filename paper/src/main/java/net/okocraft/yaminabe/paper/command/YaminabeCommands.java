@@ -2,6 +2,7 @@ package net.okocraft.yaminabe.paper.command;
 
 import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
 import io.papermc.paper.command.brigadier.Commands;
+import net.okocraft.yaminabe.paper.platform.RegionScheduler;
 import org.jetbrains.annotations.NotNullByDefault;
 
 @NotNullByDefault
@@ -11,7 +12,7 @@ public final class YaminabeCommands {
         return CommandMessages.DEFINER;
     }
 
-    public static void register(Commands commands) {
+    public static void register(Commands commands, RegionScheduler scheduler) {
         commands.register(
             Commands.literal("yaminabe")
                 .requires(source -> source.getSender().hasPermission("yaminabe.command"))
@@ -24,6 +25,7 @@ public final class YaminabeCommands {
         commands.register(ItemCommand.createItemCommand(), ItemCommand.getAliases());
         commands.register(ItemLoreCommand.createItemLoreCommand(), ItemLoreCommand.getAliases());
         commands.register(ItemNameCommand.createItemNameCommand(), ItemNameCommand.getAliases());
+        commands.register(SignCommand.createSignCommand(scheduler), SignCommand.getAliases());
         commands.register(SkullCommand.createSkullCommand());
 
         for (WorkstationCommands workstation : WorkstationCommands.values()) {

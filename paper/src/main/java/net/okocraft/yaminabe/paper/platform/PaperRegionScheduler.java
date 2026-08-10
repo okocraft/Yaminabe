@@ -13,11 +13,13 @@ class PaperRegionScheduler implements RegionScheduler {
     }
 
     @Override
-    public void execute(@NotNull Location location, @NotNull Runnable task) {
+    public boolean execute(@NotNull Location location, @NotNull Runnable task) {
         if (this.plugin.getServer().isOwnedByCurrentRegion(location)) {
             task.run();
-        } else {
-            this.plugin.getServer().getRegionScheduler().execute(this.plugin, location, task);
+            return true;
         }
+
+        this.plugin.getServer().getRegionScheduler().execute(this.plugin, location, task);
+        return false;
     }
 }
