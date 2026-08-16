@@ -6,6 +6,7 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
+import net.okocraft.yaminabe.paper.config.YaminabePaperConfig;
 import net.okocraft.yaminabe.paper.listener.EventListeners;
 import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
 import org.bukkit.event.HandlerList;
@@ -19,17 +20,20 @@ import java.util.Locale;
 import java.util.function.Supplier;
 
 import static net.okocraft.yaminabe.common.YaminabeLogger.log;
+import static net.okocraft.yaminabe.common.YaminabeLogger.logDebug;
 
 public class YaminabePaperPlugin extends JavaPlugin {
 
     private final PaperSchedulerProvider scheduler;
     private final List<DefaultMessageDefiner> defaultMessages;
+    private final YaminabePaperConfig.Holder config;
     private PluginStatus status;
 
     public YaminabePaperPlugin(@NotNull PluginStatus initialStatus, @NotNull List<DefaultMessageDefiner> defaultMessages) {
         this.status = initialStatus;
         this.defaultMessages = defaultMessages;
         this.scheduler = new PaperSchedulerProvider(this);
+        this.config = new YaminabePaperConfig.Holder(this.getDataPath());
     }
 
     @Override
@@ -38,6 +42,18 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.NOT_LOADED,
             "load",
             () -> {
+                try {
+                    this.config.reload();
+                } catch (Exception e) {
+                    log().error("Failed to load the config file", e);
+                    return PluginStatus.EXCEPTION_OCCURRED;
+                }
+
+                if (this.config.get().debug()) {
+                    logDebug(true);
+                    log().info("Debug mode enabled");
+                }
+
                 try {
                     LanguageProvider.load(this.getDataPath().resolve("languages"), this.defaultMessages);
                 } catch (Exception e) {
