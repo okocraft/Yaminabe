@@ -11,6 +11,7 @@ jcommon {
 
     commonDependencies {
         compileOnlyApi(libs.annotations)
+        compileOnlyApi(libs.configurate.yaml)
         compileOnlyApi(libs.slf4j.api)
 
         implementation(libs.mcmsgdef)
@@ -18,6 +19,7 @@ jcommon {
         testImplementation(libs.junit.jupiter)
         testImplementation(libs.adventure.api)
         testImplementation(libs.adventure.minimessage)
+        testImplementation(libs.configurate.yaml)
         testRuntimeOnly(libs.slf4j.simple)
     }
 

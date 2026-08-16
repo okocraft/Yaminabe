@@ -2,6 +2,7 @@
 # libraries
 adventure = "5.2.0"
 annotations = "26.1.0"
+configurate = "4.2.0"
 mcmsgdef = "1.3.0"
 
 # platform api
@@ -25,6 +26,7 @@ gradle-plugins = "1.8.5"
 adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
 adventure-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
 annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
+configurate-yaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurate" }
 mcmsgdef = { module = "dev.siroshun.mcmsgdef:mcmsgdef", version.ref = "mcmsgdef" }
 
 # platform api
