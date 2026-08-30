@@ -126,7 +126,77 @@ def aliases_in(block: list[str]) -> set[str]:
     return result
 
 
-def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]], list[str]]:
+def remove_aliases(block: list[str], labels: frozenset[str]) -> tuple[list[str], list[str]]:
+    for index, line in enumerate(block):
+        match = ALIASES.match(line.rstrip("\r\n"))
+        if match is None:
+            continue
+
+        newline = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+        value = match.group(1).strip()
+
+        if value.startswith("[") and value.endswith("]"):
+            raw_aliases = value[1:-1].split(",")
+            kept = []
+            removed = []
+            for raw_alias in raw_aliases:
+                alias = clean_alias(raw_alias)
+                if not alias:
+                    continue
+                if alias in labels:
+                    removed.append(alias)
+                else:
+                    kept.append(raw_alias.strip())
+
+            if not removed:
+                return block, []
+
+            updated = list(block)
+            if kept:
+                updated[index] = f"    aliases: [{', '.join(kept)}]{newline}"
+            else:
+                del updated[index]
+            return updated, sorted(set(removed))
+
+        if value:
+            alias = clean_alias(value.split(" #", 1)[0])
+            if alias not in labels:
+                return block, []
+            updated = list(block)
+            del updated[index]
+            return updated, [alias]
+
+        child_end = index + 1
+        while child_end < len(block) and block[child_end].rstrip("\r\n").startswith("      "):
+            child_end += 1
+
+        removed = []
+        kept_children = []
+        for child in block[index + 1:child_end]:
+            item = child.rstrip("\r\n").strip()
+            if item.startswith("-"):
+                alias = clean_alias(item[1:])
+                if alias in labels:
+                    removed.append(alias)
+                    continue
+            kept_children.append(child)
+
+        if not removed:
+            return block, []
+
+        updated = list(block[:index])
+        if kept_children:
+            updated.append(line)
+            updated.extend(kept_children)
+        updated.extend(block[child_end:])
+        return updated, sorted(set(removed))
+
+    return block, []
+
+
+def patch_plugin_yml(
+    text: str,
+) -> tuple[str, list[tuple[str, list[str]]], list[tuple[str, list[str]]], list[str]]:
     lines = text.splitlines(keepends=True)
 
     try:
@@ -153,7 +223,8 @@ def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]], list[
     if not entry_starts:
         raise RuntimeError("plugin.yml commands section has no command entries")
 
-    removed: list[tuple[str, list[str]]] = []
+    removed_entries: list[tuple[str, list[str]]] = []
+    removed_aliases: list[tuple[str, list[str]]] = []
     remaining: list[str] = []
     output = lines[:commands_start + 1]
     cursor = commands_start + 1
@@ -163,31 +234,38 @@ def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]], list[
         output.extend(lines[cursor:start])
 
         block = lines[start:end]
-        labels = {command_name} | aliases_in(block)
-        matched = sorted(labels & TARGET_LABELS)
-        if matched:
-            removed.append((command_name, matched))
+        aliases = aliases_in(block)
+
+        if command_name in TARGET_LABELS:
+            matched = sorted(({command_name} | aliases) & TARGET_LABELS)
+            removed_entries.append((command_name, matched))
         else:
+            patched_block, matched_aliases = remove_aliases(block, TARGET_LABELS)
+            if matched_aliases:
+                removed_aliases.append((command_name, matched_aliases))
             remaining.append(command_name)
-            output.extend(block)
+            output.extend(patched_block)
         cursor = end
 
     output.extend(lines[cursor:])
 
-    if not removed:
-        raise RuntimeError("no EssentialsX command entries matched the removal labels")
+    if not removed_entries and not removed_aliases:
+        raise RuntimeError("no EssentialsX command labels matched the removal labels")
 
-    return "".join(output), removed, remaining
+    return "".join(output), removed_entries, removed_aliases, remaining
 
 
-def patch_jar(source: Path, destination: Path) -> tuple[list[tuple[str, list[str]]], list[str]]:
+def patch_jar(
+    source: Path,
+    destination: Path,
+) -> tuple[list[tuple[str, list[str]]], list[tuple[str, list[str]]], list[str]]:
     with ZipFile(source, "r") as input_jar:
         try:
             plugin_yml = input_jar.read("plugin.yml").decode("utf-8")
         except KeyError as exc:
             raise RuntimeError("EssentialsX jar has no plugin.yml") from exc
 
-        patched_yml, removed, remaining = patch_plugin_yml(plugin_yml)
+        patched_yml, removed_entries, removed_aliases, remaining = patch_plugin_yml(plugin_yml)
         destination.parent.mkdir(parents=True, exist_ok=True)
 
         with ZipFile(destination, "w") as output_jar:
@@ -196,14 +274,15 @@ def patch_jar(source: Path, destination: Path) -> tuple[list[tuple[str, list[str
                 data = patched_yml.encode("utf-8") if info.filename == "plugin.yml" else input_jar.read(info.filename)
                 output_jar.writestr(info, data)
 
-    return removed, remaining
+    return removed_entries, removed_aliases, remaining
 
 
 def write_actions_summary(
     build_number: int,
     filename: str,
     destination: Path,
-    removed: list[tuple[str, list[str]]],
+    removed_entries: list[tuple[str, list[str]]],
+    removed_aliases: list[tuple[str, list[str]]],
     remaining: list[str],
 ) -> None:
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
@@ -216,7 +295,8 @@ def write_actions_summary(
         f"- Jenkins build: `#{build_number}`",
         f"- Source artifact: `{filename}`",
         f"- Patched jar: `{destination.name}`",
-        f"- Removed command entries: **{len(removed)}**",
+        f"- Removed command entries: **{len(removed_entries)}**",
+        f"- Commands with removed aliases: **{len(removed_aliases)}**",
         f"- Remaining command entries: **{len(remaining)}**",
         "",
         "## Removed command entries",
@@ -226,7 +306,18 @@ def write_actions_summary(
     ]
     lines.extend(
         f"| `{command_name}` | {', '.join(f'`{label}`' for label in matched)} |"
-        for command_name, matched in sorted(removed)
+        for command_name, matched in sorted(removed_entries)
+    )
+    lines.extend([
+        "",
+        "## Removed aliases",
+        "",
+        "| Command | Removed aliases |",
+        "| --- | --- |",
+    ])
+    lines.extend(
+        f"| `{command_name}` | {', '.join(f'`{label}`' for label in matched)} |"
+        for command_name, matched in sorted(removed_aliases)
     )
     lines.extend([
         "",
@@ -263,17 +354,20 @@ def main() -> int:
         source.write_bytes(get_bytes(artifact_url))
 
         destination = args.output_dir / f"{source.stem}-patched.jar"
-        removed, remaining = patch_jar(source, destination)
+        removed_entries, removed_aliases, remaining = patch_jar(source, destination)
 
     print("Removed EssentialsX command entries:")
-    for command_name, matched in sorted(removed):
+    for command_name, matched in sorted(removed_entries):
+        print(f"  - {command_name}: {', '.join(matched)}")
+    print("Removed EssentialsX command aliases:")
+    for command_name, matched in sorted(removed_aliases):
         print(f"  - {command_name}: {', '.join(matched)}")
     print("Remaining EssentialsX command entries:")
     for command_name in sorted(remaining):
         print(f"  - {command_name}")
     print(f"Patched jar: {destination}")
 
-    write_actions_summary(build_number, filename, destination, removed, remaining)
+    write_actions_summary(build_number, filename, destination, removed_entries, removed_aliases, remaining)
     return 0
 
 
