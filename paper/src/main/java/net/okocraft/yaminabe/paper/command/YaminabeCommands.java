@@ -18,6 +18,7 @@ public final class YaminabeCommands {
         commands.register(
             Commands.literal("yaminabe")
                 .requires(source -> source.getSender().hasPermission("yaminabe.command"))
+                .then(DumpCommandsCommand.createDumpCommandsCommand(commands.getDispatcher()))
                 .then(ReloadCommand.createReloadCommand(async, reloader))
                 .then(VersionCommand.createVersionCommand())
                 .build()
