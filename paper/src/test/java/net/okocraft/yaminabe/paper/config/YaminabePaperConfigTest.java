@@ -7,6 +7,7 @@ import org.spongepowered.configurate.ConfigurateException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 class YaminabePaperConfigTest {
 
@@ -34,6 +35,19 @@ class YaminabePaperConfigTest {
         holder.reload();
 
         Assertions.assertNotSame(before, holder.get());
+    }
+
+    @Test
+    void testReloadLoadsCommandsToUnregister(@TempDir Path dir) throws Exception {
+        Files.writeString(
+            dir.resolve("config.yml"),
+            "unregister-commands:\n  - custom\n  - essentials:hat\n"
+        );
+
+        var holder = new YaminabePaperConfig.Holder(dir);
+        holder.reload();
+
+        Assertions.assertEquals(List.of("custom", "essentials:hat"), holder.get().unregisterCommands());
     }
 
     @Test
