@@ -26,8 +26,8 @@ class CommandUnregistrarTest {
         knownCommands.put("essentials:hat", externalCommand);
 
         var dispatcher = new CommandDispatcher<CommandSourceStack>();
-        dispatcher.register(LiteralArgumentBuilder.literal("hat"));
-        dispatcher.register(LiteralArgumentBuilder.literal("essentials:hat"));
+        dispatcher.register(LiteralArgumentBuilder.<CommandSourceStack>literal("hat"));
+        dispatcher.register(LiteralArgumentBuilder.<CommandSourceStack>literal("essentials:hat"));
 
         var commands = Mockito.mock(Commands.class);
         Mockito.when(commands.getDispatcher()).thenReturn(dispatcher);
@@ -48,7 +48,7 @@ class CommandUnregistrarTest {
         knownCommands.put("custom", Mockito.mock(Command.class));
 
         var dispatcher = new CommandDispatcher<CommandSourceStack>();
-        dispatcher.register(LiteralArgumentBuilder.literal("custom"));
+        dispatcher.register(LiteralArgumentBuilder.<CommandSourceStack>literal("custom"));
 
         var commands = Mockito.mock(Commands.class);
         Mockito.when(commands.getDispatcher()).thenReturn(dispatcher);
