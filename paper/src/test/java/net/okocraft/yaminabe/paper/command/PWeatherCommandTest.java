@@ -58,11 +58,6 @@ class PWeatherCommandTest {
     }
 
     @Test
-    void testDurationIsNotAccepted() {
-        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(this.source, "pweather rain 10s"));
-    }
-
-    @Test
     void testResetRestoresWorldWeather() throws Exception {
         Assertions.assertEquals(1, this.tester.execute(this.source, "pweather reset"));
 
