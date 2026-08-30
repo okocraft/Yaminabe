@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import tempfile
 from pathlib import Path
@@ -125,7 +126,7 @@ def aliases_in(block: list[str]) -> set[str]:
     return result
 
 
-def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]]]:
+def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]], list[str]]:
     lines = text.splitlines(keepends=True)
 
     try:
@@ -153,6 +154,7 @@ def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]]]:
         raise RuntimeError("plugin.yml commands section has no command entries")
 
     removed: list[tuple[str, list[str]]] = []
+    remaining: list[str] = []
     output = lines[:commands_start + 1]
     cursor = commands_start + 1
 
@@ -166,6 +168,7 @@ def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]]]:
         if matched:
             removed.append((command_name, matched))
         else:
+            remaining.append(command_name)
             output.extend(block)
         cursor = end
 
@@ -174,17 +177,17 @@ def patch_plugin_yml(text: str) -> tuple[str, list[tuple[str, list[str]]]]:
     if not removed:
         raise RuntimeError("no EssentialsX command entries matched the removal labels")
 
-    return "".join(output), removed
+    return "".join(output), removed, remaining
 
 
-def patch_jar(source: Path, destination: Path) -> list[tuple[str, list[str]]]:
+def patch_jar(source: Path, destination: Path) -> tuple[list[tuple[str, list[str]]], list[str]]:
     with ZipFile(source, "r") as input_jar:
         try:
             plugin_yml = input_jar.read("plugin.yml").decode("utf-8")
         except KeyError as exc:
             raise RuntimeError("EssentialsX jar has no plugin.yml") from exc
 
-        patched_yml, removed = patch_plugin_yml(plugin_yml)
+        patched_yml, removed, remaining = patch_plugin_yml(plugin_yml)
         destination.parent.mkdir(parents=True, exist_ok=True)
 
         with ZipFile(destination, "w") as output_jar:
@@ -193,7 +196,55 @@ def patch_jar(source: Path, destination: Path) -> list[tuple[str, list[str]]]:
                 data = patched_yml.encode("utf-8") if info.filename == "plugin.yml" else input_jar.read(info.filename)
                 output_jar.writestr(info, data)
 
-    return removed
+    return removed, remaining
+
+
+def write_actions_summary(
+    build_number: int,
+    filename: str,
+    destination: Path,
+    removed: list[tuple[str, list[str]]],
+    remaining: list[str],
+) -> None:
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+
+    lines = [
+        "# EssentialsX command patch",
+        "",
+        f"- Jenkins build: `#{build_number}`",
+        f"- Source artifact: `{filename}`",
+        f"- Patched jar: `{destination.name}`",
+        f"- Removed command entries: **{len(removed)}**",
+        f"- Remaining command entries: **{len(remaining)}**",
+        "",
+        "## Removed command entries",
+        "",
+        "| Command | Conflicting labels |",
+        "| --- | --- |",
+    ]
+    lines.extend(
+        f"| `{command_name}` | {', '.join(f'`{label}`' for label in matched)} |"
+        for command_name, matched in removed
+    )
+    lines.extend([
+        "",
+        "## Remaining command entries",
+        "",
+        "<details>",
+        f"<summary>Show {len(remaining)} commands</summary>",
+        "",
+        "```text",
+        *remaining,
+        "```",
+        "",
+        "</details>",
+        "",
+    ])
+
+    with Path(summary_path).open("a", encoding="utf-8") as summary:
+        summary.write("\n".join(lines))
 
 
 def main() -> int:
@@ -212,12 +263,17 @@ def main() -> int:
         source.write_bytes(get_bytes(artifact_url))
 
         destination = args.output_dir / f"{source.stem}-patched.jar"
-        removed = patch_jar(source, destination)
+        removed, remaining = patch_jar(source, destination)
 
     print("Removed EssentialsX command entries:")
     for command_name, matched in removed:
         print(f"  - {command_name}: {', '.join(matched)}")
+    print("Remaining EssentialsX command entries:")
+    for command_name in remaining:
+        print(f"  - {command_name}")
     print(f"Patched jar: {destination}")
+
+    write_actions_summary(build_number, filename, destination, removed, remaining)
     return 0
 
 
