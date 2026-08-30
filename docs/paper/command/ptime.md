@@ -22,8 +22,9 @@ supported. If omitted, the command targets the player executing the command. A n
 A selector that resolves to no online players fails without changing anything.
 
 The time set by this command is absolute and does not advance. `/ptime reset` restores normal world-time behavior.
-`/ptime query` also reports a relative time override if another plugin has configured one, even though Yaminabe does not
-create relative overrides.
+The override is session-only and is not persisted by Yaminabe, so disconnecting and joining again also restores normal
+world-time behavior. `/ptime query` also reports a relative time override if another plugin has configured one, even
+though Yaminabe does not create relative overrides.
 
 ## Permissions
 
