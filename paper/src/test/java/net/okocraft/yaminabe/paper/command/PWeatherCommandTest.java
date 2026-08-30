@@ -3,6 +3,7 @@ package net.okocraft.yaminabe.paper.command;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.ComponentLike;
+import net.okocraft.yaminabe.paper.platform.EntityScheduler;
 import net.okocraft.yaminabe.paper.testsupport.CommandTester;
 import net.okocraft.yaminabe.paper.testsupport.TestSources;
 import org.bukkit.WeatherType;
@@ -23,7 +24,12 @@ class PWeatherCommandTest {
     private static final String RESET_PERMISSION = PERMISSION + ".reset";
     private static final String QUERY_PERMISSION = PERMISSION + ".query";
 
-    private final CommandTester tester = CommandTester.of(PWeatherCommand.createPWeatherCommand());
+    private static final EntityScheduler DIRECT_SCHEDULER = (entity, task) -> {
+        task.run();
+        return true;
+    };
+
+    private final CommandTester tester = CommandTester.of(PWeatherCommand.createPWeatherCommand(DIRECT_SCHEDULER));
 
     private Player player;
     private CommandSourceStack source;
@@ -119,13 +125,34 @@ class PWeatherCommandTest {
     }
 
     @Test
-    void testNonPlayerExecutorAlwaysNeedsOthersPermission() {
-        ConsoleCommandSender console = Mockito.mock(ConsoleCommandSender.class);
-        Player target = Mockito.mock(Player.class);
-        CommandSourceStack consoleSource = TestSources.ofSenderOnly(console);
+    void testExecuteAsAnotherPlayerStillRequiresOthersPermission() {
+        Player executor = Mockito.mock(Player.class);
+        CommandSourceStack executeAsSource = TestSources.of(this.player, executor);
 
-        Assertions.assertFalse(PWeatherCommand.canTargetOthers(consoleSource, List.of(target), SET_OTHERS_PERMISSION));
+        Assertions.assertFalse(PWeatherCommand.canTargetOthers(executeAsSource, List.of(executor), SET_OTHERS_PERMISSION));
+        Mockito.verify(this.player).sendMessage(CommandMessages.PWEATHER_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testNonPlayerSenderAlwaysNeedsOthersPermission() {
+        ConsoleCommandSender console = Mockito.mock(ConsoleCommandSender.class);
+        Player executor = Mockito.mock(Player.class);
+        CommandSourceStack consoleSource = TestSources.of(console, executor);
+
+        Assertions.assertFalse(PWeatherCommand.canTargetOthers(consoleSource, List.of(executor), SET_OTHERS_PERMISSION));
         Mockito.verify(console).sendMessage(CommandMessages.PWEATHER_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testRetiredPlayerIsNotModifiedOrReportedAsSuccess() throws Exception {
+        EntityScheduler scheduler = Mockito.mock(EntityScheduler.class);
+        CommandTester tester = CommandTester.of(PWeatherCommand.createPWeatherCommand(scheduler));
+
+        Assertions.assertEquals(0, tester.execute(this.source, "pweather clear"));
+
+        Mockito.verify(scheduler).execute(Mockito.eq(this.player), Mockito.any(Runnable.class));
+        Mockito.verify(this.player, Mockito.never()).setPlayerWeather(Mockito.any());
+        Mockito.verify(this.player).sendMessage(CommandMessages.PWEATHER_NO_TARGETS);
     }
 
     @Test

@@ -77,6 +77,7 @@ final class CommandMessages {
     static final MessageKey SIGN_WAXED_DISABLED = DEFINER.define(PREFIX + "sign.waxed-disabled", "<gray>The sign is no longer waxed.");
 
     static final MessageKey PTIME_TARGET_REQUIRED = DEFINER.define(PREFIX + "ptime.target-required", "<red>Targets must be specified when the command is not executed as a player.");
+    static final MessageKey PTIME_NO_TARGETS = DEFINER.define(PREFIX + "ptime.no-targets", "<red>No target players are available.");
     static final MessageKey PTIME_OTHERS_PREVENTED = DEFINER.define(PREFIX + "ptime.others-prevented", "<red>You are not allowed to manage other players' time.");
     static final MessageKey.Arg2<String, String> PTIME_SET = DEFINER.define(PREFIX + "ptime.set", "<gray>Fixed the time to <aqua><time></aqua><gray> for <aqua><players></aqua><gray>.").with(time -> Argument.string("time", time), players -> Argument.string("players", players));
     static final MessageKey.Arg1<String> PTIME_RESET = DEFINER.define(PREFIX + "ptime.reset", "<gray>Reset the time for <aqua><players></aqua><gray>.").with(players -> Argument.string("players", players));
@@ -85,6 +86,7 @@ final class CommandMessages {
     static final MessageKey.Arg2<String, String> PTIME_QUERY_RELATIVE = DEFINER.define(PREFIX + "ptime.query-relative", "<aqua><player></aqua><gray>: relative offset <aqua><offset></aqua>").with(player -> Argument.string("player", player), offset -> Argument.string("offset", offset));
 
     static final MessageKey PWEATHER_TARGET_REQUIRED = DEFINER.define(PREFIX + "pweather.target-required", "<red>Targets must be specified when the command is not executed as a player.");
+    static final MessageKey PWEATHER_NO_TARGETS = DEFINER.define(PREFIX + "pweather.no-targets", "<red>No target players are available.");
     static final MessageKey PWEATHER_OTHERS_PREVENTED = DEFINER.define(PREFIX + "pweather.others-prevented", "<red>You are not allowed to manage other players' weather.");
     static final MessageKey.Arg2<String, String> PWEATHER_SET = DEFINER.define(PREFIX + "pweather.set", "<gray>Fixed the weather to <aqua><weather></aqua><gray> for <aqua><players></aqua><gray>.").with(weather -> Argument.string("weather", weather), players -> Argument.string("players", players));
     static final MessageKey.Arg1<String> PWEATHER_RESET = DEFINER.define(PREFIX + "pweather.reset", "<gray>Reset the weather for <aqua><players></aqua><gray>.").with(players -> Argument.string("players", players));

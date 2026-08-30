@@ -9,10 +9,12 @@ public class PaperSchedulerProvider implements SchedulerProvider {
 
     private final Scheduler async;
     private final RegionScheduler region;
+    private final EntityScheduler entity;
 
     public PaperSchedulerProvider(@NotNull Plugin plugin) {
         this.async = new PaperAsyncScheduler(plugin);
         this.region = new PaperRegionScheduler(plugin);
+        this.entity = new PaperEntityScheduler(plugin);
     }
 
     @Override
@@ -31,4 +33,12 @@ public class PaperSchedulerProvider implements SchedulerProvider {
         return this.region;
     }
 
+    /**
+     * Returns the scheduler that runs a task on the thread owning an entity.
+     *
+     * @return the entity scheduler
+     */
+    public @NotNull EntityScheduler entity() {
+        return this.entity;
+    }
 }
