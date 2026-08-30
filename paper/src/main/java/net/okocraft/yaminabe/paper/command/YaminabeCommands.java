@@ -29,6 +29,8 @@ public final class YaminabeCommands {
         commands.register(ItemCommand.createItemCommand(), ItemCommand.getAliases());
         commands.register(ItemLoreCommand.createItemLoreCommand(), ItemLoreCommand.getAliases());
         commands.register(ItemNameCommand.createItemNameCommand(), ItemNameCommand.getAliases());
+        commands.register(PTimeCommand.createPTimeCommand());
+        commands.register(PWeatherCommand.createPWeatherCommand());
         commands.register(SignCommand.createSignCommand(scheduler), SignCommand.getAliases());
         commands.register(SkullCommand.createSkullCommand());
 
