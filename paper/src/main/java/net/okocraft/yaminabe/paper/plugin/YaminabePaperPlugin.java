@@ -2,6 +2,7 @@ package net.okocraft.yaminabe.paper.plugin;
 
 import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
 import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.plugin.lifecycle.event.registrar.ReloadableRegistrarEvent;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.YaminabeReloader;
@@ -19,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -30,6 +32,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
     private final PaperSchedulerProvider scheduler;
     private final List<DefaultMessageDefiner> defaultMessages;
     private final YaminabePaperConfig.Holder config;
+    private Set<String> startupCommandsToUnregister = Set.of();
     private PluginStatus status;
 
     public YaminabePaperPlugin(@NotNull PluginStatus initialStatus, @NotNull List<DefaultMessageDefiner> defaultMessages) {
@@ -47,6 +50,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
             () -> {
                 try {
                     this.loadConfig();
+                    this.startupCommandsToUnregister = Set.copyOf(this.config.get().unregisterCommands());
                 } catch (Exception e) {
                     log().error("Failed to load the config file", e);
                     return PluginStatus.EXCEPTION_OCCURRED;
@@ -71,7 +75,16 @@ public class YaminabePaperPlugin extends JavaPlugin {
             () -> {
                 this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
                     Commands commands = event.registrar();
-                    YaminabeCommands.register(commands, this.scheduler.async(), this.scheduler.region(), this::reload);
+                    Set<String> additionalCommands = event.cause() == ReloadableRegistrarEvent.Cause.INITIAL
+                        ? this.startupCommandsToUnregister
+                        : Set.of();
+                    YaminabeCommands.register(
+                        commands,
+                        this.scheduler.async(),
+                        this.scheduler.region(),
+                        this::reload,
+                        additionalCommands
+                    );
                 });
                 EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
                 return PluginStatus.ENABLED;
