@@ -4,9 +4,11 @@ import net.okocraft.yaminabe.common.config.ConfigLoader;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.meta.Comment;
+import org.spongepowered.configurate.objectmapping.meta.Setting;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -19,8 +21,16 @@ public class YaminabePaperConfig {
     @Comment("More output to the console.")
     private boolean debug = false;
 
+    @Setting("unregister-commands")
+    @Comment("Additional command labels to unregister on server startup. Namespaced labels can also be specified.")
+    private List<String> unregisterCommands = List.of();
+
     public boolean debug() {
         return this.debug;
+    }
+
+    public List<String> unregisterCommands() {
+        return List.copyOf(this.unregisterCommands);
     }
 
     public static class Holder {
