@@ -4,6 +4,7 @@ import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.okocraft.yaminabe.common.PluginStatus;
+import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
 import net.okocraft.yaminabe.paper.config.YaminabePaperConfig;
@@ -13,10 +14,12 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static net.okocraft.yaminabe.common.YaminabeLogger.log;
@@ -43,19 +46,14 @@ public class YaminabePaperPlugin extends JavaPlugin {
             "load",
             () -> {
                 try {
-                    this.config.reload();
+                    this.loadConfig();
                 } catch (Exception e) {
                     log().error("Failed to load the config file", e);
                     return PluginStatus.EXCEPTION_OCCURRED;
                 }
 
-                if (this.config.get().debug()) {
-                    logDebug(true);
-                    log().info("Debug mode enabled");
-                }
-
                 try {
-                    LanguageProvider.load(this.getDataPath().resolve("languages"), this.defaultMessages);
+                    this.loadLanguages();
                 } catch (Exception e) {
                     log().error("Failed to load language files", e);
                     return PluginStatus.EXCEPTION_OCCURRED;
@@ -73,7 +71,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
             () -> {
                 this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
                     Commands commands = event.registrar();
-                    YaminabeCommands.register(commands, this.scheduler.region());
+                    YaminabeCommands.register(commands, this.scheduler.async(), this.scheduler.region(), this::reload);
                 });
                 EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
                 return PluginStatus.ENABLED;
@@ -92,6 +90,40 @@ public class YaminabePaperPlugin extends JavaPlugin {
                 return PluginStatus.DISABLED;
             }
         );
+    }
+
+    private void reload(Consumer<YaminabeReloader.Notification> consumer) {
+        try {
+            this.loadConfig();
+            consumer.accept(YaminabeReloader.Notification.CONFIG_RELOADED);
+        } catch (IOException e) {
+            log().error("Failed to reload config", e);
+            consumer.accept(YaminabeReloader.Notification.FAILED_TO_RELOAD_CONFIG);
+        }
+
+        try {
+            LanguageProvider.unload();
+            this.loadLanguages();
+            consumer.accept(YaminabeReloader.Notification.LANGUAGE_RELOADED);
+        } catch (IOException e) {
+            log().error("Failed to reload languages", e);
+            consumer.accept(YaminabeReloader.Notification.FAILED_TO_RELOAD_LANGUAGES);
+        }
+    }
+
+    private void loadConfig() throws IOException {
+        this.config.reload();
+
+        boolean debug = this.config.get().debug();
+        logDebug(debug);
+
+        if (debug) {
+            log().info("Debug mode enabled");
+        }
+    }
+
+    private void loadLanguages() throws IOException {
+        LanguageProvider.load(this.getDataPath().resolve("languages"), this.defaultMessages);
     }
 
     private void checkStatusAndRun(@NotNull PluginStatus expectedStatus, @NotNull String action, @NotNull Supplier<PluginStatus> resultSupplier) {
