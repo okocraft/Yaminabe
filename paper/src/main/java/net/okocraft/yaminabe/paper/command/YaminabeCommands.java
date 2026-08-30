@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNullByDefault;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 @NotNullByDefault
 public final class YaminabeCommands {
@@ -25,7 +26,8 @@ public final class YaminabeCommands {
         Scheduler async,
         RegionScheduler scheduler,
         YaminabeReloader reloader,
-        Collection<String> additionalCommandsToUnregister
+        Collection<String> additionalCommandsToUnregister,
+        Supplier<? extends Collection<String>> registeredCommandLabels
     ) {
         CommandUnregistrar.unregister(commands, additionalCommandsToUnregister);
 
@@ -33,6 +35,7 @@ public final class YaminabeCommands {
             commands,
             Commands.literal("yaminabe")
                 .requires(source -> source.getSender().hasPermission("yaminabe.command"))
+                .then(DumpCommandsCommand.createDumpCommandsCommand(registeredCommandLabels))
                 .then(ReloadCommand.createReloadCommand(async, reloader))
                 .then(VersionCommand.createVersionCommand())
                 .build(),
