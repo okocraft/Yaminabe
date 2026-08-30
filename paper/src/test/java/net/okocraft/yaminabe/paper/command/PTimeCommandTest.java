@@ -12,10 +12,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.List;
+
 class PTimeCommandTest {
 
     private static final String PERMISSION = "yaminabe.command.ptime";
     private static final String SET_PERMISSION = PERMISSION + ".set";
+    private static final String SET_OTHERS_PERMISSION = SET_PERMISSION + ".others";
     private static final String RESET_PERMISSION = PERMISSION + ".reset";
     private static final String QUERY_PERMISSION = PERMISSION + ".query";
 
@@ -41,7 +44,7 @@ class PTimeCommandTest {
     }
 
     @Test
-    void testTimeIsNormalizedToOneDay() throws Exception {
+    void testTimeIsNormalizedToVisualDay() throws Exception {
         Assertions.assertEquals(1, this.tester.execute(this.source, "ptime set 1d"));
 
         Mockito.verify(this.player).setPlayerTime(0, false);
@@ -49,7 +52,7 @@ class PTimeCommandTest {
     }
 
     @Test
-    void testVanillaTimeMarkersAreFixed() throws Exception {
+    void testVanillaTimeMarkersAreMapped() throws Exception {
         Assertions.assertEquals(1, this.tester.execute(this.source, "ptime set day"));
         Mockito.verify(this.player).setPlayerTime(1000, false);
 
@@ -64,7 +67,7 @@ class PTimeCommandTest {
     }
 
     @Test
-    void testReset() throws Exception {
+    void testResetRestoresWorldTime() throws Exception {
         Assertions.assertEquals(1, this.tester.execute(this.source, "ptime reset"));
 
         Mockito.verify(this.player).resetPlayerTime();
@@ -92,7 +95,7 @@ class PTimeCommandTest {
     }
 
     @Test
-    void testQueryRelativeTimeSetByAnotherPlugin() throws Exception {
+    void testQueryRelativeTimeSetOutsideYaminabe() throws Exception {
         Mockito.when(this.player.isPlayerTimeRelative()).thenReturn(true);
         Mockito.when(this.player.getPlayerTimeOffset()).thenReturn(5000L);
 
@@ -102,7 +105,7 @@ class PTimeCommandTest {
     }
 
     @Test
-    void testConsoleMustSpecifyTargets() throws Exception {
+    void testNonPlayerExecutorMustSpecifyTargets() throws Exception {
         ConsoleCommandSender console = Mockito.mock(ConsoleCommandSender.class);
         TestSources.grant(console, PERMISSION, SET_PERMISSION);
 
@@ -111,11 +114,41 @@ class PTimeCommandTest {
     }
 
     @Test
-    void testSetIsHiddenWithoutSetPermission() {
+    void testTargetingAnotherPlayerRequiresOthersPermission() {
+        Player other = Mockito.mock(Player.class);
+
+        Assertions.assertFalse(PTimeCommand.canTargetOthers(this.source, List.of(this.player, other), SET_OTHERS_PERMISSION));
+        Mockito.verify(this.player).sendMessage(CommandMessages.PTIME_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testTargetingAnotherPlayerIsAllowedWithOthersPermission() {
+        Player other = Mockito.mock(Player.class);
+        TestSources.grant(this.player, SET_OTHERS_PERMISSION);
+
+        Assertions.assertTrue(PTimeCommand.canTargetOthers(this.source, List.of(this.player, other), SET_OTHERS_PERMISSION));
+        Mockito.verify(this.player, Mockito.never()).sendMessage(CommandMessages.PTIME_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testNonPlayerExecutorAlwaysNeedsOthersPermission() {
+        ConsoleCommandSender console = Mockito.mock(ConsoleCommandSender.class);
+        Player target = Mockito.mock(Player.class);
+        CommandSourceStack consoleSource = TestSources.ofSenderOnly(console);
+
+        Assertions.assertFalse(PTimeCommand.canTargetOthers(consoleSource, List.of(target), SET_OTHERS_PERMISSION));
+        Mockito.verify(console).sendMessage(CommandMessages.PTIME_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testSubcommandsAreHiddenWithoutTheirPermissions() {
         Player player = Mockito.mock(Player.class);
         TestSources.grant(player, PERMISSION);
+        CommandSourceStack source = TestSources.of(player);
 
-        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(TestSources.of(player), "ptime set day"));
+        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(source, "ptime set day"));
+        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(source, "ptime reset"));
+        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(source, "ptime query"));
         Mockito.verify(player, Mockito.never()).sendMessage(Mockito.any(ComponentLike.class));
     }
 

@@ -13,10 +13,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.List;
+
 class PWeatherCommandTest {
 
     private static final String PERMISSION = "yaminabe.command.pweather";
     private static final String SET_PERMISSION = PERMISSION + ".set";
+    private static final String SET_OTHERS_PERMISSION = SET_PERMISSION + ".others";
     private static final String RESET_PERMISSION = PERMISSION + ".reset";
     private static final String QUERY_PERMISSION = PERMISSION + ".query";
 
@@ -50,12 +53,17 @@ class PWeatherCommandTest {
     }
 
     @Test
-    void testThunderIsNotSupported() {
+    void testUnsupportedWeatherIsRejected() {
         Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(this.source, "pweather thunder"));
     }
 
     @Test
-    void testReset() throws Exception {
+    void testDurationIsNotAccepted() {
+        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(this.source, "pweather rain 10s"));
+    }
+
+    @Test
+    void testResetRestoresWorldWeather() throws Exception {
         Assertions.assertEquals(1, this.tester.execute(this.source, "pweather reset"));
 
         Mockito.verify(this.player).resetPlayerWeather();
@@ -90,7 +98,7 @@ class PWeatherCommandTest {
     }
 
     @Test
-    void testConsoleMustSpecifyTargets() throws Exception {
+    void testNonPlayerExecutorMustSpecifyTargets() throws Exception {
         ConsoleCommandSender console = Mockito.mock(ConsoleCommandSender.class);
         TestSources.grant(console, PERMISSION, SET_PERMISSION);
 
@@ -99,11 +107,41 @@ class PWeatherCommandTest {
     }
 
     @Test
-    void testSetIsHiddenWithoutSetPermission() {
+    void testTargetingAnotherPlayerRequiresOthersPermission() {
+        Player other = Mockito.mock(Player.class);
+
+        Assertions.assertFalse(PWeatherCommand.canTargetOthers(this.source, List.of(this.player, other), SET_OTHERS_PERMISSION));
+        Mockito.verify(this.player).sendMessage(CommandMessages.PWEATHER_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testTargetingAnotherPlayerIsAllowedWithOthersPermission() {
+        Player other = Mockito.mock(Player.class);
+        TestSources.grant(this.player, SET_OTHERS_PERMISSION);
+
+        Assertions.assertTrue(PWeatherCommand.canTargetOthers(this.source, List.of(this.player, other), SET_OTHERS_PERMISSION));
+        Mockito.verify(this.player, Mockito.never()).sendMessage(CommandMessages.PWEATHER_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testNonPlayerExecutorAlwaysNeedsOthersPermission() {
+        ConsoleCommandSender console = Mockito.mock(ConsoleCommandSender.class);
+        Player target = Mockito.mock(Player.class);
+        CommandSourceStack consoleSource = TestSources.ofSenderOnly(console);
+
+        Assertions.assertFalse(PWeatherCommand.canTargetOthers(consoleSource, List.of(target), SET_OTHERS_PERMISSION));
+        Mockito.verify(console).sendMessage(CommandMessages.PWEATHER_OTHERS_PREVENTED);
+    }
+
+    @Test
+    void testSubcommandsAreHiddenWithoutTheirPermissions() {
         Player player = Mockito.mock(Player.class);
         TestSources.grant(player, PERMISSION);
+        CommandSourceStack source = TestSources.of(player);
 
-        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(TestSources.of(player), "pweather clear"));
+        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(source, "pweather clear"));
+        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(source, "pweather reset"));
+        Assertions.assertThrows(CommandSyntaxException.class, () -> this.tester.execute(source, "pweather query"));
         Mockito.verify(player, Mockito.never()).sendMessage(Mockito.any(ComponentLike.class));
     }
 

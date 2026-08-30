@@ -121,7 +121,7 @@ final class PWeatherCommand {
         return context.getArgument(TARGETS_ARGUMENT, PlayerSelectorArgumentResolver.class).resolve(context.getSource());
     }
 
-    private static boolean canTargetOthers(CommandSourceStack source, List<Player> targets, String permission) {
+    static boolean canTargetOthers(CommandSourceStack source, List<Player> targets, String permission) {
         Player self = source.getExecutor() instanceof Player player ? player : null;
         boolean includesOthers = self == null || targets.stream().anyMatch(target -> target != self);
 
