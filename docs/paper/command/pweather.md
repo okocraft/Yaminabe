@@ -1,22 +1,26 @@
 # `/pweather`
 
-Fixes the client-side weather for individual players without changing the world's weather.
+Overrides client-side weather for individual players without changing the world's weather.
 
 ## Usage
 
-| Command                       | Description                                                     |
-|-------------------------------|-----------------------------------------------------------------|
-| `/pweather clear [targets]`   | Fixes the selected players' weather to clear.                   |
-| `/pweather rain [targets]`    | Fixes the selected players' weather to rain.                    |
-| `/pweather reset [targets]`   | Makes the selected players follow the world weather again.      |
-| `/pweather query [targets]`   | Shows the current player-weather override for selected players. |
+| Command                     | Description                                                     |
+|-----------------------------|-----------------------------------------------------------------|
+| `/pweather clear [targets]` | Fixes the selected players' weather to clear.                   |
+| `/pweather rain [targets]`  | Fixes the selected players' precipitation to rain.              |
+| `/pweather reset [targets]` | Makes the selected players follow the world weather again.      |
+| `/pweather query [targets]` | Shows the current player-weather override for selected players. |
 
 `[targets]` uses the vanilla player-selector argument, so player names and selectors such as `@s`, `@p`, and `@a` are
 supported. If omitted, the command targets the player executing the command. A non-player executor must specify targets.
 A selector that resolves to no online players fails without changing anything.
 
-The weather remains fixed until `/pweather reset` is run. The override is session-only and is not persisted by Yaminabe,
-so disconnecting and joining again also restores normal world-weather behavior.
+The override remains until `/pweather reset` is run. It is session-only and is not persisted by Yaminabe, so disconnecting
+and joining again also restores normal world-weather behavior.
+
+`rain` maps to Bukkit/Paper's `DOWNFALL` player-weather state. This fixes precipitation to rain, but the API does not have
+a separate per-player thunder state; while `rain` is active, the client's thunder level still follows the world's thunder
+level. `query` reports the configured player-weather override, not whether the world is currently thundering.
 
 ## Permissions
 
@@ -41,8 +45,8 @@ Vanilla selector permissions still apply to selectors parsed by the server.
 ## Differences from EssentialsX and `/weather`
 
 - Only `clear` and `rain` are supported. Bukkit/Paper's player-weather API has no separate thunderstorm state, so Yaminabe
-  does not expose a misleading `thunder` option.
-- A duration is intentionally not supported. The override stays fixed until it is reset or the player reconnects.
+  does not expose a misleading `thunder` option. With `rain`, thunder still follows the world as described above.
+- A duration is intentionally not supported. The override stays active until it is reset or the player reconnects.
 - EssentialsX aliases such as `sun` and `storm` are not supported.
 - Player targeting uses vanilla selectors instead of EssentialsX's `*` and `**` handling.
 - The command has no EssentialsX aliases such as `playerweather` or `epweather`.
