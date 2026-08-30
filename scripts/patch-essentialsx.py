@@ -226,7 +226,7 @@ def write_actions_summary(
     ]
     lines.extend(
         f"| `{command_name}` | {', '.join(f'`{label}`' for label in matched)} |"
-        for command_name, matched in removed
+        for command_name, matched in sorted(removed)
     )
     lines.extend([
         "",
@@ -236,7 +236,7 @@ def write_actions_summary(
         f"<summary>Show {len(remaining)} commands</summary>",
         "",
         "```text",
-        *remaining,
+        *sorted(remaining),
         "```",
         "",
         "</details>",
@@ -266,10 +266,10 @@ def main() -> int:
         removed, remaining = patch_jar(source, destination)
 
     print("Removed EssentialsX command entries:")
-    for command_name, matched in removed:
+    for command_name, matched in sorted(removed):
         print(f"  - {command_name}: {', '.join(matched)}")
     print("Remaining EssentialsX command entries:")
-    for command_name in remaining:
+    for command_name in sorted(remaining):
         print(f"  - {command_name}")
     print(f"Patched jar: {destination}")
 
