@@ -71,7 +71,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
             () -> {
                 this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
                     Commands commands = event.registrar();
-                    YaminabeCommands.register(commands, this.scheduler.async(), this.scheduler.region(), this::reload);
+                    YaminabeCommands.register(commands, this.scheduler.async(), this.scheduler.region(), this.scheduler.entity(), this::reload);
                 });
                 EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
                 return PluginStatus.ENABLED;

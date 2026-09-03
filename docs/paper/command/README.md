@@ -14,6 +14,8 @@ Commands provided by Yaminabe on Paper/Folia.
 | [`/itemlore`](itemlore.md)                 | `lore`, `ilore` | Edits the lore of the item in the main hand.      |
 | [`/itemname`](itemname.md)                 | `iname`         | Renames the item in the main hand.                |
 | [`/loom`](loom.md)                         | -               | Opens a loom menu without the block.              |
+| [`/ptime`](ptime.md)                       | -               | Fixes player-specific client time.                |
+| [`/pweather`](pweather.md)                 | -               | Fixes player-specific client weather.             |
 | [`/sign`](sign.md)                         | `editsign`      | Edits a sign in the world.                        |
 | [`/skull`](skull.md)                       | -               | Gives a player head.                              |
 | [`/smithingtable`](smithingtable.md)       | -               | Opens a smithing table menu without the block.    |

@@ -47,6 +47,8 @@ YAMINABE_COMMAND_LABELS = frozenset({
     "itemlore", "lore", "ilore",
     "itemname", "iname",
     "loom",
+    "ptime",
+    "pweather",
     "sign", "editsign",
     "skull",
     "smithingtable",

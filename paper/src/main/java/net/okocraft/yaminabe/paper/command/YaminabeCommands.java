@@ -4,6 +4,7 @@ import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
 import io.papermc.paper.command.brigadier.Commands;
 import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.platform.scheduler.Scheduler;
+import net.okocraft.yaminabe.paper.platform.EntityScheduler;
 import net.okocraft.yaminabe.paper.platform.RegionScheduler;
 import org.jetbrains.annotations.NotNullByDefault;
 
@@ -14,7 +15,7 @@ public final class YaminabeCommands {
         return CommandMessages.DEFINER;
     }
 
-    public static void register(Commands commands, Scheduler async, RegionScheduler scheduler, YaminabeReloader reloader) {
+    public static void register(Commands commands, Scheduler async, RegionScheduler scheduler, EntityScheduler entityScheduler, YaminabeReloader reloader) {
         commands.register(
             Commands.literal("yaminabe")
                 .requires(source -> source.getSender().hasPermission("yaminabe.command"))
@@ -29,6 +30,8 @@ public final class YaminabeCommands {
         commands.register(ItemCommand.createItemCommand(), ItemCommand.getAliases());
         commands.register(ItemLoreCommand.createItemLoreCommand(), ItemLoreCommand.getAliases());
         commands.register(ItemNameCommand.createItemNameCommand(), ItemNameCommand.getAliases());
+        commands.register(PTimeCommand.createPTimeCommand(entityScheduler));
+        commands.register(PWeatherCommand.createPWeatherCommand(entityScheduler));
         commands.register(SignCommand.createSignCommand(scheduler), SignCommand.getAliases());
         commands.register(SkullCommand.createSkullCommand());
 
