@@ -130,6 +130,63 @@ class AutoRestartCommandTest {
     }
 
     @Test
+    void testTimeOnlyAtAcceptsColon() throws Exception {
+        Fixture fixture = fixture();
+        fixture.source.permissions.add(RestartCommandPermissions.RESTART);
+
+        Assertions.assertEquals(1, fixture.dispatcher.execute("autorestart restart at 18:00", fixture.source));
+
+        Assertions.assertEquals(Instant.parse("2026-09-06T09:00:00Z"), current(fixture).executeAt());
+    }
+
+    @Test
+    void testAtSupportsCountdownAndReason() throws Exception {
+        Fixture fixture = fixture();
+        fixture.source.permissions.add(RestartCommandPermissions.RESTART);
+
+        Assertions.assertEquals(
+            1,
+            fixture.dispatcher.execute(
+                "autorestart restart at 2026-09-10T18:00 countdown 5m reason maintenance window",
+                fixture.source
+            )
+        );
+
+        ShutdownReservation reservation = current(fixture);
+        Assertions.assertEquals(Instant.parse("2026-09-10T09:00:00Z"), reservation.executeAt());
+        Assertions.assertEquals(reservation.executeAt().minus(Duration.ofMinutes(5)), reservation.countdownStartAt());
+        Assertions.assertEquals("maintenance window", reservation.reason());
+    }
+
+    @Test
+    void testAtReasonCanStartWithCountdownWord() throws Exception {
+        Fixture fixture = fixture();
+        fixture.source.permissions.add(RestartCommandPermissions.RESTART);
+
+        Assertions.assertEquals(
+            1,
+            fixture.dispatcher.execute(
+                "autorestart restart at 18:00 reason countdown maintenance",
+                fixture.source
+            )
+        );
+
+        Assertions.assertEquals("countdown maintenance", current(fixture).reason());
+    }
+
+    @Test
+    void testMalformedAtArgumentsDoNotSchedule() throws Exception {
+        Fixture fixture = fixture();
+        fixture.source.permissions.add(RestartCommandPermissions.RESTART);
+
+        Assertions.assertEquals(0, fixture.dispatcher.execute("autorestart restart at 18:00 countdown", fixture.source));
+
+        Assertions.assertTrue(fixture.service.current().isEmpty());
+        Assertions.assertTrue(fixture.scheduler.tasks.isEmpty());
+        Assertions.assertEquals(1, fixture.source.messages.size());
+    }
+
+    @Test
     void testStopCreatesStopReservation() throws Exception {
         Fixture fixture = fixture();
         fixture.source.permissions.add(RestartCommandPermissions.STOP);

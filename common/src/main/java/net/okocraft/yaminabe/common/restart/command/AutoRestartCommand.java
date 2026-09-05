@@ -50,8 +50,8 @@ public final class AutoRestartCommand {
             .requires(source -> sourceAdapter.hasPermission(source, permission))
             .executes(context -> executor.scheduleDefault(context.getSource(), type))
             .then(createNowBranch(type, executor))
-            .then(createTimedBranch("in", false, type, executor))
-            .then(createTimedBranch("at", true, type, executor));
+            .then(createInBranch(type, executor))
+            .then(createAtBranch(type, executor));
     }
 
     private static <S> LiteralArgumentBuilder<S> createNowBranch(
@@ -69,24 +69,20 @@ public final class AutoRestartCommand {
                     ))));
     }
 
-    private static <S> LiteralArgumentBuilder<S> createTimedBranch(
-        String literal,
-        boolean dateTime,
+    private static <S> LiteralArgumentBuilder<S> createInBranch(
         ShutdownType type,
         RestartCommandExecutor<S> executor
     ) {
-        String argumentName = dateTime ? "date-time" : "duration";
-        RequiredArgumentBuilder<S, String> argument = RequiredArgumentBuilder.argument(
-            argumentName,
+        RequiredArgumentBuilder<S, String> duration = RequiredArgumentBuilder.argument(
+            "duration",
             StringArgumentType.word()
         );
 
-        argument.executes(context -> scheduleTimed(context, dateTime, type, executor, null, null));
-        argument.then(LiteralArgumentBuilder.<S>literal("countdown")
+        duration.executes(context -> scheduleIn(context, type, executor, null, null));
+        duration.then(LiteralArgumentBuilder.<S>literal("countdown")
             .then(RequiredArgumentBuilder.<S, String>argument("countdown", StringArgumentType.word())
-                .executes(context -> scheduleTimed(
+                .executes(context -> scheduleIn(
                     context,
-                    dateTime,
                     type,
                     executor,
                     StringArgumentType.getString(context, "countdown"),
@@ -94,40 +90,119 @@ public final class AutoRestartCommand {
                 ))
                 .then(LiteralArgumentBuilder.<S>literal("reason")
                     .then(RequiredArgumentBuilder.<S, String>argument("reason", StringArgumentType.greedyString())
-                        .executes(context -> scheduleTimed(
+                        .executes(context -> scheduleIn(
                             context,
-                            dateTime,
                             type,
                             executor,
                             StringArgumentType.getString(context, "countdown"),
                             StringArgumentType.getString(context, "reason")
                         ))))));
-        argument.then(LiteralArgumentBuilder.<S>literal("reason")
+        duration.then(LiteralArgumentBuilder.<S>literal("reason")
             .then(RequiredArgumentBuilder.<S, String>argument("reason", StringArgumentType.greedyString())
-                .executes(context -> scheduleTimed(
+                .executes(context -> scheduleIn(
                     context,
-                    dateTime,
                     type,
                     executor,
                     null,
                     StringArgumentType.getString(context, "reason")
                 ))));
 
-        return LiteralArgumentBuilder.<S>literal(literal).then(argument);
+        return LiteralArgumentBuilder.<S>literal("in").then(duration);
     }
 
-    private static <S> int scheduleTimed(
+    private static <S> LiteralArgumentBuilder<S> createAtBranch(
+        ShutdownType type,
+        RestartCommandExecutor<S> executor
+    ) {
+        return LiteralArgumentBuilder.<S>literal("at")
+            .then(RequiredArgumentBuilder.<S, String>argument("at-arguments", StringArgumentType.greedyString())
+                .executes(context -> scheduleAt(
+                    context.getSource(),
+                    type,
+                    executor,
+                    StringArgumentType.getString(context, "at-arguments")
+                )));
+    }
+
+    private static <S> int scheduleIn(
         CommandContext<S> context,
-        boolean dateTime,
         ShutdownType type,
         RestartCommandExecutor<S> executor,
         @Nullable String countdown,
         @Nullable String reason
     ) {
-        String input = StringArgumentType.getString(context, dateTime ? "date-time" : "duration");
-        return dateTime
-            ? executor.scheduleAt(context.getSource(), type, input, countdown, reason)
-            : executor.scheduleIn(context.getSource(), type, input, countdown, reason);
+        return executor.scheduleIn(
+            context.getSource(),
+            type,
+            StringArgumentType.getString(context, "duration"),
+            countdown,
+            reason
+        );
+    }
+
+    private static <S> int scheduleAt(
+        S source,
+        ShutdownType type,
+        RestartCommandExecutor<S> executor,
+        String input
+    ) {
+        AtArguments arguments = parseAtArguments(input);
+        return arguments == null
+            ? executor.invalidArguments(source)
+            : executor.scheduleAt(source, type, arguments.dateTime(), arguments.countdown(), arguments.reason());
+    }
+
+    private static @Nullable AtArguments parseAtArguments(String input) {
+        Token dateTime = takeToken(input);
+        if (dateTime == null) {
+            return null;
+        }
+
+        Token option = takeToken(dateTime.remaining());
+        if (option == null) {
+            return new AtArguments(dateTime.value(), null, null);
+        }
+
+        if (option.value().equalsIgnoreCase("reason")) {
+            String reason = option.remaining().strip();
+            return reason.isEmpty() ? null : new AtArguments(dateTime.value(), null, reason);
+        }
+
+        if (!option.value().equalsIgnoreCase("countdown")) {
+            return null;
+        }
+
+        Token countdown = takeToken(option.remaining());
+        if (countdown == null) {
+            return null;
+        }
+        Token reasonLiteral = takeToken(countdown.remaining());
+        if (reasonLiteral == null) {
+            return new AtArguments(dateTime.value(), countdown.value(), null);
+        }
+        if (!reasonLiteral.value().equalsIgnoreCase("reason")) {
+            return null;
+        }
+        String reason = reasonLiteral.remaining().strip();
+        return reason.isEmpty() ? null : new AtArguments(dateTime.value(), countdown.value(), reason);
+    }
+
+    private static @Nullable Token takeToken(String input) {
+        String value = input.stripLeading();
+        if (value.isEmpty()) {
+            return null;
+        }
+        int index = 0;
+        while (index < value.length() && !Character.isWhitespace(value.charAt(index))) {
+            index++;
+        }
+        return new Token(value.substring(0, index), value.substring(index));
+    }
+
+    private record AtArguments(String dateTime, @Nullable String countdown, @Nullable String reason) {
+    }
+
+    private record Token(String value, String remaining) {
     }
 
     private AutoRestartCommand() {

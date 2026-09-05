@@ -33,6 +33,8 @@ public final class RestartCommandMessages {
     static final MessageKey.Arg1<String> INVALID_DATE_TIME = DEFINER
         .define(PREFIX + "invalid-date-time", "<red>Invalid date or time: <aqua><input></aqua><red>.")
         .with(input -> Argument.string("input", input));
+    static final MessageKey INVALID_ARGUMENTS = DEFINER
+        .define(PREFIX + "invalid-arguments", "<red>Invalid restart command arguments.");
     static final MessageKey SCHEDULE_FAILED = DEFINER
         .define(PREFIX + "schedule-failed", "<red>The reservation could not be activated.");
 

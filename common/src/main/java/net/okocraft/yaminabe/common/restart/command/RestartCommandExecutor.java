@@ -134,6 +134,11 @@ final class RestartCommandExecutor<S> {
             });
     }
 
+    int invalidArguments(S source) {
+        this.sourceAdapter.sendMessage(source, RestartCommandMessages.INVALID_ARGUMENTS);
+        return 0;
+    }
+
     private int scheduleTimed(
         S source,
         ShutdownType type,
