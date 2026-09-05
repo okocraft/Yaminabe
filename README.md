@@ -1,11 +1,13 @@
 # Yaminabe
 
-Yaminabe is a Paper plugin for providing *various* features.
+Yaminabe provides *various* features for Paper and Velocity.
 
 ## Requirements
 
 - Java 25
-- Paper or Folia 26.1+
+- One of the following platforms:
+  - Paper or Folia 26.1+
+  - Velocity 4.1+
 
 ## Build
 
@@ -15,11 +17,11 @@ Yaminabe is a Paper plugin for providing *various* features.
 ./gradlew build
 ```
 
-Then, `Yaminabe-x.x.x.jar` is located in the `build/libs` directory.
+Then, platform-specific jars such as `Yaminabe-Paper-x.x.x.jar` and `Yaminabe-Velocity-x.x.x.jar` are located in the `build/libs` directory.
 
-### Run server for debugging
+### Run Paper server for debugging
 
-This project can be run a single Minecraft server for debugging.
+This project can be run a single Paper server for debugging.
 
 ```shell
 ./gradlew runServer

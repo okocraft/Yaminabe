@@ -1,0 +1,7 @@
+{
+  "id": "yaminabe",
+  "name": "Yaminabe",
+  "version": "${projectVersion}",
+  "description": "Yaminabe is a Velocity plugin to provide *various* features.",
+  "main": "net.okocraft.yaminabe.velocity.plugin.YaminabeVelocityPlugin"
+}

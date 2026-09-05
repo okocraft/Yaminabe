@@ -15,6 +15,7 @@ rootProject.name = "yaminabe"
 
 addProject("common")
 addProject("paper")
+addProject("velocity")
 
 fun addProject(name: String) {
     addProject(name, name)
