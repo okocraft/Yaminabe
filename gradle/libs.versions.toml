@@ -47,5 +47,6 @@ slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 
 paperweight-userdev = { id = "io.papermc.paperweight.userdev", version.ref = "paperweight-userdev" }
 run-server = { id = "xyz.jpenilla.run-paper", version.ref = "run-server" }
+run-velocity = { id = "xyz.jpenilla.run-velocity", version.ref = "run-server" }
 bundler = { id = "dev.siroshun.gradle.plugins.bundler", version.ref = "gradle-plugins" }
 jcommon = { id = "dev.siroshun.gradle.plugins.jcommon", version.ref = "gradle-plugins" }
