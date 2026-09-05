@@ -10,7 +10,9 @@ jcommon {
     setupMockito(libs.mockito)
 
     commonDependencies {
+        compileOnlyApi(libs.adventure.api)
         compileOnlyApi(libs.annotations)
+        compileOnlyApi(libs.brigadier)
         compileOnlyApi(libs.configurate.yaml)
         compileOnlyApi(libs.slf4j.api)
 
@@ -19,6 +21,7 @@ jcommon {
         testImplementation(libs.junit.jupiter)
         testImplementation(libs.adventure.api)
         testImplementation(libs.adventure.minimessage)
+        testImplementation(libs.brigadier)
         testImplementation(libs.configurate.yaml)
         testRuntimeOnly(libs.slf4j.simple)
     }
