@@ -4,12 +4,12 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class RestartDateTimeParser {
 
@@ -34,11 +34,9 @@ public final class RestartDateTimeParser {
 
     private static Instant parseDateTime(String input, Instant now, ZoneId zoneId) {
         try {
-            Instant result = LocalDateTime.parse(input, DateTimeFormatter.ISO_LOCAL_DATE_TIME).atZone(zoneId).toInstant();
-            if (!result.isAfter(now)) {
-                throw new IllegalArgumentException("date-time must be in the future: " + input);
-            }
-            return result;
+            LocalDateTime dateTime = LocalDateTime.parse(input, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            return resolveFuture(dateTime, now, zoneId)
+                .orElseThrow(() -> new IllegalArgumentException("date-time must be in the future: " + input));
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException("invalid date-time: " + input, exception);
         }
@@ -47,15 +45,27 @@ public final class RestartDateTimeParser {
     private static Instant parseTime(String input, Instant now, ZoneId zoneId) {
         try {
             LocalTime time = LocalTime.parse(input, TIME_FORMATTER);
-            ZonedDateTime zonedNow = now.atZone(zoneId);
-            ZonedDateTime candidate = ZonedDateTime.of(zonedNow.toLocalDate(), time, zoneId);
-            if (!candidate.toInstant().isAfter(now)) {
-                candidate = ZonedDateTime.of(zonedNow.toLocalDate().plusDays(1), time, zoneId);
+            LocalDateTime candidate = LocalDateTime.of(now.atZone(zoneId).toLocalDate(), time);
+            Optional<Instant> sameDay = resolveFuture(candidate, now, zoneId);
+            if (sameDay.isPresent()) {
+                return sameDay.orElseThrow();
             }
-            return candidate.toInstant();
+            return resolveFuture(candidate.plusDays(1), now, zoneId).orElseThrow();
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException("invalid time: " + input, exception);
         }
+    }
+
+    private static Optional<Instant> resolveFuture(LocalDateTime dateTime, Instant now, ZoneId zoneId) {
+        var validOffsets = zoneId.getRules().getValidOffsets(dateTime);
+        if (validOffsets.isEmpty()) {
+            Instant candidate = dateTime.atZone(zoneId).toInstant();
+            return candidate.isAfter(now) ? Optional.of(candidate) : Optional.empty();
+        }
+        return validOffsets.stream()
+            .map(dateTime::toInstant)
+            .filter(candidate -> candidate.isAfter(now))
+            .min(Instant::compareTo);
     }
 
     private RestartDateTimeParser() {
