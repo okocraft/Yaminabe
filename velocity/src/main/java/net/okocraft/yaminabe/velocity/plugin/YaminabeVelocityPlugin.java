@@ -5,8 +5,10 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.ProxyServer;
 import net.okocraft.yaminabe.common.YaminabeLogger;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
+import net.okocraft.yaminabe.velocity.command.YaminabeCommands;
 import net.okocraft.yaminabe.velocity.config.YaminabeVelocityConfig;
 import org.slf4j.Logger;
 import org.slf4j.helpers.SubstituteLogger;
@@ -20,12 +22,14 @@ import static net.okocraft.yaminabe.common.YaminabeLogger.logDebug;
 
 public final class YaminabeVelocityPlugin {
 
+    private final ProxyServer proxy;
     private final Path dataDirectory;
     private final YaminabeVelocityConfig.Holder config;
 
     @Inject
-    public YaminabeVelocityPlugin(Logger logger, @DataDirectory Path dataDirectory) {
+    public YaminabeVelocityPlugin(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
         ((SubstituteLogger) YaminabeLogger.log()).setDelegate(logger);
+        this.proxy = proxy;
         this.dataDirectory = dataDirectory;
         this.config = new YaminabeVelocityConfig.Holder(dataDirectory);
     }
@@ -44,6 +48,8 @@ public final class YaminabeVelocityPlugin {
         } catch (IOException e) {
             log().error("Failed to load language files", e);
         }
+
+        YaminabeCommands.register(this.proxy.getCommandManager(), this);
     }
 
     @Subscribe
@@ -63,6 +69,6 @@ public final class YaminabeVelocityPlugin {
     }
 
     private void loadLanguages() throws IOException {
-        LanguageProvider.load(this.dataDirectory.resolve("languages"), List.of());
+        LanguageProvider.load(this.dataDirectory.resolve("languages"), List.of(YaminabeCommands.getDefiner()));
     }
 }
