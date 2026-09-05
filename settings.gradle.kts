@@ -15,12 +15,13 @@ rootProject.name = "yaminabe"
 
 addProject("common")
 addProject("paper")
+addProject("velocity")
 
 fun addProject(name: String) {
     addProject(name, name)
 }
 
 fun addProject(name: String, dir: String) {
-    include("${rootProject.name}-$name")
+    include(":${rootProject.name}-$name")
     project(":${rootProject.name}-$name").projectDir = file(dir)
 }

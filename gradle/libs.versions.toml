@@ -7,6 +7,7 @@ mcmsgdef = "1.3.0"
 
 # platform api
 paper = "26.2.build.121-stable"
+velocity = "4.1.1-SNAPSHOT"
 
 # testing tool
 junit = "6.1.3"
@@ -31,6 +32,7 @@ mcmsgdef = { module = "dev.siroshun.mcmsgdef:mcmsgdef", version.ref = "mcmsgdef"
 
 # platform api
 paper = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
+velocity = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
 
 # testing tool
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
