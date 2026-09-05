@@ -118,12 +118,12 @@ class ReloadCommandTest {
         }
 
         @Override
-        public void runDelayed(@NotNull Runnable task, @NotNull Duration delay) {
+        public @NotNull CancellableTask runDelayed(@NotNull Runnable task, @NotNull Duration delay) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void runAtFixedRate(@NotNull Consumer<CancellableTask> task, @NotNull Duration interval) {
+        public @NotNull CancellableTask runAtFixedRate(@NotNull Consumer<CancellableTask> task, @NotNull Duration interval) {
             throw new UnsupportedOperationException();
         }
     }

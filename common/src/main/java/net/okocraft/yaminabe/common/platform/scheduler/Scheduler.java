@@ -9,8 +9,10 @@ public interface Scheduler {
 
     void runNow(@NotNull Runnable task);
 
-    void runDelayed(@NotNull Runnable task, @NotNull Duration delay);
+    @NotNull
+    CancellableTask runDelayed(@NotNull Runnable task, @NotNull Duration delay);
 
-    void runAtFixedRate(@NotNull Consumer<CancellableTask> task, @NotNull Duration interval);
+    @NotNull
+    CancellableTask runAtFixedRate(@NotNull Consumer<CancellableTask> task, @NotNull Duration interval);
 
 }

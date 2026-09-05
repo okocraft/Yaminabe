@@ -23,24 +23,28 @@ public final class VelocityScheduler implements net.okocraft.yaminabe.common.pla
     }
 
     @Override
-    public void runDelayed(Runnable task, Duration delay) {
+    public CancellableTask runDelayed(Runnable task, Duration delay) {
         if (delay.isNegative()) {
             throw new IllegalArgumentException("delay cannot be negative");
-        } else if (delay.isZero()) {
-            this.runNow(task);
-        } else {
-            this.scheduler.buildTask(this.plugin, task).delay(delay).schedule();
         }
+
+        var builder = this.scheduler.buildTask(this.plugin, task);
+        if (!delay.isZero()) {
+            builder = builder.delay(delay);
+        }
+        var scheduledTask = builder.schedule();
+        return scheduledTask::cancel;
     }
 
     @Override
-    public void runAtFixedRate(Consumer<CancellableTask> task, Duration interval) {
+    public CancellableTask runAtFixedRate(Consumer<CancellableTask> task, Duration interval) {
         if (interval.isNegative() || interval.isZero()) {
             throw new IllegalArgumentException("interval cannot be negative or zero");
         }
-        this.scheduler.buildTask(this.plugin, scheduledTask -> task.accept(scheduledTask::cancel))
+        var scheduledTask = this.scheduler.buildTask(this.plugin, taskHandle -> task.accept(taskHandle::cancel))
             .delay(interval)
             .repeat(interval)
             .schedule();
+        return scheduledTask::cancel;
     }
 }

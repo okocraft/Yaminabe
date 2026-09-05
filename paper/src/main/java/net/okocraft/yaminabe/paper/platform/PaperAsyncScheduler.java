@@ -23,32 +23,35 @@ class PaperAsyncScheduler implements Scheduler {
     }
 
     @Override
-    public void runDelayed(@NotNull Runnable task, @NotNull Duration delay) {
+    public @NotNull CancellableTask runDelayed(@NotNull Runnable task, @NotNull Duration delay) {
         if (delay.isNegative()) {
             throw new IllegalArgumentException("delay cannot be negative");
-        } else if (delay.isZero()) {
-            this.runNow(task);
-        } else {
-            this.plugin.getServer().getAsyncScheduler().runDelayed(
+        }
+
+        var scheduler = this.plugin.getServer().getAsyncScheduler();
+        var scheduledTask = delay.isZero()
+            ? scheduler.runNow(this.plugin, ignored -> task.run())
+            : scheduler.runDelayed(
                 this.plugin,
                 ignored -> task.run(),
                 delay.toMillis(),
                 TimeUnit.MILLISECONDS
             );
-        }
+        return scheduledTask::cancel;
     }
 
     @Override
-    public void runAtFixedRate(@NotNull Consumer<CancellableTask> task, @NotNull Duration interval) {
+    public @NotNull CancellableTask runAtFixedRate(@NotNull Consumer<CancellableTask> task, @NotNull Duration interval) {
         if (interval.isNegative() || interval.isZero()) {
             throw new IllegalArgumentException("interval cannot be negative or zero");
         }
-        this.plugin.getServer().getAsyncScheduler().runAtFixedRate(
+        var scheduledTask = this.plugin.getServer().getAsyncScheduler().runAtFixedRate(
             this.plugin,
-            scheduledTask -> task.accept(scheduledTask::cancel),
+            taskHandle -> task.accept(taskHandle::cancel),
             interval.toMillis(),
             interval.toMillis(),
             TimeUnit.MILLISECONDS
         );
+        return scheduledTask::cancel;
     }
 }
