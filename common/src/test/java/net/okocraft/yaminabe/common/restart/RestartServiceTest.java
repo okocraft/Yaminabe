@@ -12,6 +12,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 class RestartServiceTest {
@@ -103,7 +105,79 @@ class RestartServiceTest {
         Assertions.assertTrue(listener.cancelled.isEmpty());
     }
 
-    private static RestartService service(TestScheduler scheduler, RecordingListener listener) {
+    @Test
+    void testCancellationCannotOvertakeCountdownNotification() throws InterruptedException {
+        TestScheduler scheduler = new TestScheduler();
+        CountDownLatch countdownEntered = new CountDownLatch(1);
+        CountDownLatch releaseCountdown = new CountDownLatch(1);
+        CountDownLatch cancellationStarted = new CountDownLatch(1);
+        CountDownLatch cancellationCompleted = new CountDownLatch(1);
+        RestartService.Listener listener = new RestartService.Listener() {
+            @Override
+            public void onCountdownStarted(ShutdownReservation reservation) {
+                countdownEntered.countDown();
+                await(releaseCountdown);
+            }
+        };
+        RestartService service = service(scheduler, listener);
+        ShutdownReservation reservation = reservation(ReservationSource.MANUAL, Duration.ofMinutes(10));
+        service.schedule(reservation);
+
+        Thread countdownThread = daemonThread(() -> scheduler.tasks.get(1).run());
+        countdownThread.start();
+
+        Thread cancellationThread = null;
+        try {
+            Assertions.assertTrue(countdownEntered.await(1, TimeUnit.SECONDS));
+            cancellationThread = daemonThread(() -> {
+                cancellationStarted.countDown();
+                service.cancel();
+                cancellationCompleted.countDown();
+            });
+            cancellationThread.start();
+
+            Assertions.assertTrue(cancellationStarted.await(1, TimeUnit.SECONDS));
+            Assertions.assertFalse(cancellationCompleted.await(100, TimeUnit.MILLISECONDS));
+        } finally {
+            releaseCountdown.countDown();
+        }
+
+        countdownThread.join(1000);
+        Assertions.assertFalse(countdownThread.isAlive());
+        if (cancellationThread != null) {
+            cancellationThread.join(1000);
+            Assertions.assertFalse(cancellationThread.isAlive());
+        }
+        Assertions.assertTrue(cancellationCompleted.await(1, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testCancellationListenerFailureDoesNotLeaveUnarmedReplacement() {
+        TestScheduler scheduler = new TestScheduler();
+        RestartService.Listener listener = new RestartService.Listener() {
+            @Override
+            public void onCancelled(ShutdownReservation reservation) {
+                throw new IllegalStateException("listener failure");
+            }
+        };
+        RestartService service = service(scheduler, listener);
+        ShutdownReservation automatic = reservation(ReservationSource.AUTOMATIC, Duration.ofHours(1));
+        ShutdownReservation manual = reservation(ReservationSource.MANUAL, Duration.ofHours(2));
+
+        service.schedule(automatic);
+        IllegalStateException exception = Assertions.assertThrows(
+            IllegalStateException.class,
+            () -> service.schedule(manual)
+        );
+
+        Assertions.assertEquals("listener failure", exception.getMessage());
+        Assertions.assertTrue(service.current().isEmpty());
+        Assertions.assertEquals(2, scheduler.tasks.size());
+        Assertions.assertTrue(scheduler.tasks.get(0).cancelled);
+        Assertions.assertTrue(scheduler.tasks.get(1).cancelled);
+    }
+
+    private static RestartService service(TestScheduler scheduler, RestartService.Listener listener) {
         return new RestartService(scheduler, Clock.fixed(NOW, ZoneOffset.UTC), listener);
     }
 
@@ -116,6 +190,21 @@ class RestartServiceTest {
             source,
             null
         );
+    }
+
+    private static Thread daemonThread(Runnable runnable) {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);
+        return thread;
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(exception);
+        }
     }
 
     private static final class RecordingListener implements RestartService.Listener {
@@ -170,7 +259,7 @@ class RestartServiceTest {
         private final Runnable runnable;
         @SuppressWarnings("unused")
         private final Duration delay;
-        private boolean cancelled;
+        private volatile boolean cancelled;
 
         private TestTask(Runnable runnable, Duration delay) {
             this.runnable = runnable;
