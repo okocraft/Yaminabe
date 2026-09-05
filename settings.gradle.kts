@@ -22,6 +22,6 @@ fun addProject(name: String) {
 }
 
 fun addProject(name: String, dir: String) {
-    include(":${rootProject.name}-$name")
+    include("${rootProject.name}-$name")
     project(":${rootProject.name}-$name").projectDir = file(dir)
 }
