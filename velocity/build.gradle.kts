@@ -10,6 +10,7 @@ jcommon {
 dependencies {
     implementation(projects.yaminabeCommon)
     compileOnly(libs.velocity)
+    testImplementation(libs.velocity)
 }
 
 bundler {
