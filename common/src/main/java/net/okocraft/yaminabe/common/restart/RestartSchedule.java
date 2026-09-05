@@ -2,9 +2,9 @@ package net.okocraft.yaminabe.common.restart;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -35,11 +35,13 @@ public record RestartSchedule(ZoneId zoneId, List<LocalTime> times) {
         LocalDate date = instant.atZone(this.zoneId).toLocalDate();
         for (int dayOffset = 0; dayOffset <= 2; dayOffset++) {
             LocalDate candidateDate = date.plusDays(dayOffset);
-            for (LocalTime time : this.times) {
-                Instant candidate = ZonedDateTime.of(candidateDate, time, this.zoneId).toInstant();
-                if (candidate.isAfter(instant)) {
-                    return Optional.of(candidate);
-                }
+            Optional<Instant> next = this.times.stream()
+                .map(time -> LocalDateTime.of(candidateDate, time))
+                .map(dateTime -> RestartDateTimeParser.resolveFuture(dateTime, instant, this.zoneId))
+                .flatMap(Optional::stream)
+                .min(Instant::compareTo);
+            if (next.isPresent()) {
+                return next;
             }
         }
         throw new IllegalStateException("failed to calculate the next scheduled restart");

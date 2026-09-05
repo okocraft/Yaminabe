@@ -31,9 +31,11 @@ public final class RestartService implements AutoCloseable {
     public ScheduleResult schedule(ShutdownReservation reservation) {
         Objects.requireNonNull(reservation);
         ActiveReservation next = new ActiveReservation(reservation);
+        ActiveReservation previous;
+        boolean previousNotificationDeferred = false;
 
         synchronized (this.stateLock) {
-            ActiveReservation previous = this.current;
+            previous = this.current;
             if (reservation.source() == ReservationSource.AUTOMATIC
                 && previous != null
                 && previous.reservation.source() == ReservationSource.MANUAL) {
@@ -43,39 +45,39 @@ public final class RestartService implements AutoCloseable {
             this.current = next;
             if (previous != null) {
                 previous.cancel();
-                try {
-                    this.listener.onCancelled(previous.reservation);
-                } catch (RuntimeException | Error exception) {
-                    if (this.current == next) {
-                        this.current = null;
-                    }
-                    next.cancel();
-                    throw exception;
-                }
+                previousNotificationDeferred = previous.deferTerminalNotification(TerminalNotification.CANCELLED);
             }
-
-            try {
-                this.arm(next);
-            } catch (RuntimeException | Error exception) {
-                if (this.current == next) {
-                    this.current = null;
-                    next.cancel();
-                    try {
-                        this.listener.onCancelled(next.reservation);
-                    } catch (RuntimeException | Error listenerException) {
-                        exception.addSuppressed(listenerException);
-                    }
-                } else {
-                    next.cancel();
-                }
-                throw exception;
-            }
-
-            return new ScheduleResult(
-                previous == null ? ScheduleStatus.SCHEDULED : ScheduleStatus.REPLACED,
-                previous == null ? null : previous.reservation
-            );
         }
+
+        try {
+            this.arm(next);
+        } catch (RuntimeException | Error exception) {
+            Removal removal = this.removeIfCurrent(next);
+            if (previous != null && !previousNotificationDeferred) {
+                notifyTerminal(this.listener, previous.reservation, TerminalNotification.CANCELLED, exception);
+            }
+            if (removal.removed && !removal.notificationDeferred) {
+                notifyTerminal(this.listener, next.reservation, TerminalNotification.CANCELLED, exception);
+            }
+            throw exception;
+        }
+
+        if (previous != null && !previousNotificationDeferred) {
+            this.listener.onCancelled(previous.reservation);
+        }
+
+        synchronized (this.stateLock) {
+            if (this.current != next) {
+                return new ScheduleResult(
+                    ScheduleStatus.SUPERSEDED,
+                    previous == null ? null : previous.reservation
+                );
+            }
+        }
+        return new ScheduleResult(
+            previous == null ? ScheduleStatus.SCHEDULED : ScheduleStatus.REPLACED,
+            previous == null ? null : previous.reservation
+        );
     }
 
     public Optional<Snapshot> current() {
@@ -86,17 +88,23 @@ public final class RestartService implements AutoCloseable {
     }
 
     public Optional<ShutdownReservation> cancel() {
+        ActiveReservation active;
+        boolean notificationDeferred;
         synchronized (this.stateLock) {
-            ActiveReservation active = this.current;
+            active = this.current;
             if (active == null) {
                 return Optional.empty();
             }
 
             this.current = null;
             active.cancel();
-            this.listener.onCancelled(active.reservation);
-            return Optional.of(active.reservation);
+            notificationDeferred = active.deferTerminalNotification(TerminalNotification.CANCELLED);
         }
+
+        if (!notificationDeferred) {
+            this.listener.onCancelled(active.reservation);
+        }
+        return Optional.of(active.reservation);
     }
 
     @Override
@@ -121,17 +129,79 @@ public final class RestartService implements AutoCloseable {
             if (this.current != active || !active.startCountdown()) {
                 return;
             }
+        }
+
+        Throwable failure = null;
+        try {
             this.listener.onCountdownStarted(active.reservation);
+        } catch (RuntimeException | Error exception) {
+            failure = exception;
+            throw exception;
+        } finally {
+            TerminalNotification deferred;
+            synchronized (this.stateLock) {
+                deferred = active.finishCountdownNotification();
+            }
+            if (deferred != null) {
+                if (failure == null) {
+                    this.notifyTerminal(active.reservation, deferred);
+                } else {
+                    notifyTerminal(this.listener, active.reservation, deferred, failure);
+                }
+            }
         }
     }
 
     private void execute(ActiveReservation active) {
+        boolean notificationDeferred;
         synchronized (this.stateLock) {
             if (this.current != active || !active.beginExecution()) {
                 return;
             }
             this.current = null;
+            notificationDeferred = active.deferTerminalNotification(TerminalNotification.EXECUTE);
+        }
+
+        if (!notificationDeferred) {
             this.listener.onExecute(active.reservation);
+        }
+    }
+
+    private Removal removeIfCurrent(ActiveReservation active) {
+        synchronized (this.stateLock) {
+            if (this.current != active) {
+                active.cancel();
+                return new Removal(false, false);
+            }
+            this.current = null;
+            active.cancel();
+            return new Removal(
+                true,
+                active.deferTerminalNotification(TerminalNotification.CANCELLED)
+            );
+        }
+    }
+
+    private void notifyTerminal(ShutdownReservation reservation, TerminalNotification notification) {
+        switch (notification) {
+            case CANCELLED -> this.listener.onCancelled(reservation);
+            case EXECUTE -> this.listener.onExecute(reservation);
+        }
+    }
+
+    private static void notifyTerminal(
+        Listener listener,
+        ShutdownReservation reservation,
+        TerminalNotification notification,
+        Throwable failure
+    ) {
+        try {
+            switch (notification) {
+                case CANCELLED -> listener.onCancelled(reservation);
+                case EXECUTE -> listener.onExecute(reservation);
+            }
+        } catch (RuntimeException | Error listenerException) {
+            failure.addSuppressed(listenerException);
         }
     }
 
@@ -159,6 +229,7 @@ public final class RestartService implements AutoCloseable {
     public enum ScheduleStatus {
         SCHEDULED,
         REPLACED,
+        SUPERSEDED,
         REJECTED_BY_MANUAL
     }
 
@@ -174,14 +245,26 @@ public final class RestartService implements AutoCloseable {
 
         public ScheduleResult {
             Objects.requireNonNull(status);
-            if ((status == ScheduleStatus.REPLACED) != (replaced != null)) {
-                throw new IllegalArgumentException("replaced reservation must be present only for REPLACED status");
+            if (status == ScheduleStatus.REPLACED && replaced == null) {
+                throw new IllegalArgumentException("replaced reservation must be present for REPLACED status");
+            }
+            if ((status == ScheduleStatus.SCHEDULED || status == ScheduleStatus.REJECTED_BY_MANUAL)
+                && replaced != null) {
+                throw new IllegalArgumentException("replaced reservation must be absent for this status");
             }
         }
 
         public boolean scheduled() {
-            return this.status != ScheduleStatus.REJECTED_BY_MANUAL;
+            return this.status == ScheduleStatus.SCHEDULED || this.status == ScheduleStatus.REPLACED;
         }
+    }
+
+    private enum TerminalNotification {
+        CANCELLED,
+        EXECUTE
+    }
+
+    private record Removal(boolean removed, boolean notificationDeferred) {
     }
 
     private static final class ActiveReservation {
@@ -191,44 +274,61 @@ public final class RestartService implements AutoCloseable {
         private boolean active = true;
         private @Nullable CancellableTask executionTask;
         private @Nullable CancellableTask countdownTask;
+        private boolean countdownNotificationInProgress;
+        private @Nullable TerminalNotification deferredTerminalNotification;
 
         private ActiveReservation(ShutdownReservation reservation) {
             this.reservation = reservation;
         }
 
-        private void setExecutionTask(CancellableTask task) {
+        private synchronized void setExecutionTask(CancellableTask task) {
+            this.executionTask = this.setTask(this.executionTask, task);
+        }
+
+        private synchronized void setCountdownTask(CancellableTask task) {
+            this.countdownTask = this.setTask(this.countdownTask, task);
+        }
+
+        private synchronized CancellableTask setTask(@Nullable CancellableTask existing, CancellableTask task) {
             Objects.requireNonNull(task);
-            if (this.executionTask != null) {
+            if (existing != null) {
                 task.cancel();
-                throw new IllegalStateException("execution task is already set");
+                throw new IllegalStateException("task is already set");
             }
-            this.executionTask = task;
             if (!this.active) {
                 task.cancel();
             }
+            return task;
         }
 
-        private void setCountdownTask(CancellableTask task) {
-            Objects.requireNonNull(task);
-            if (this.countdownTask != null) {
-                task.cancel();
-                throw new IllegalStateException("countdown task is already set");
-            }
-            this.countdownTask = task;
-            if (!this.active) {
-                task.cancel();
-            }
-        }
-
-        private boolean startCountdown() {
+        private synchronized boolean startCountdown() {
             if (!this.active || this.phase != Phase.WAITING) {
                 return false;
             }
             this.phase = Phase.COUNTDOWN;
+            this.countdownNotificationInProgress = true;
             return true;
         }
 
-        private boolean beginExecution() {
+        private synchronized boolean deferTerminalNotification(TerminalNotification notification) {
+            if (!this.countdownNotificationInProgress) {
+                return false;
+            }
+            if (this.deferredTerminalNotification != null) {
+                throw new IllegalStateException("terminal notification is already deferred");
+            }
+            this.deferredTerminalNotification = notification;
+            return true;
+        }
+
+        private synchronized @Nullable TerminalNotification finishCountdownNotification() {
+            this.countdownNotificationInProgress = false;
+            TerminalNotification deferred = this.deferredTerminalNotification;
+            this.deferredTerminalNotification = null;
+            return deferred;
+        }
+
+        private synchronized boolean beginExecution() {
             if (!this.active) {
                 return false;
             }
@@ -237,7 +337,7 @@ public final class RestartService implements AutoCloseable {
             return true;
         }
 
-        private void cancel() {
+        private synchronized void cancel() {
             if (!this.active) {
                 return;
             }

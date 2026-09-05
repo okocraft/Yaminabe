@@ -42,6 +42,28 @@ class RestartDateTimeParserTest {
     }
 
     @Test
+    void testParsesDateTimeWithLowercaseT() {
+        Instant now = Instant.parse("2026-09-06T03:00:00Z");
+
+        Assertions.assertEquals(
+            Instant.parse("2026-09-10T09:00:00Z"),
+            RestartDateTimeParser.parseFuture("2026-09-10t18:00", now, TOKYO)
+        );
+    }
+
+    @Test
+    void testDateOnlyInputUsesDateTimeError() {
+        Instant now = Instant.parse("2026-09-06T03:00:00Z");
+
+        IllegalArgumentException exception = Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> RestartDateTimeParser.parseFuture("2026-09-10", now, TOKYO)
+        );
+
+        Assertions.assertEquals("invalid date-time: 2026-09-10", exception.getMessage());
+    }
+
+    @Test
     void testRejectsPastDateTime() {
         Instant now = Instant.parse("2026-09-06T03:00:00Z");
 

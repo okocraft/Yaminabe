@@ -43,6 +43,23 @@ class ShutdownReservationTest {
     }
 
     @Test
+    void testHugeCountdownIsClampedWithoutDateTimeOverflow() {
+        Instant createdAt = Instant.parse("2026-09-06T00:00:00Z");
+        Instant executeAt = createdAt.plus(Duration.ofMinutes(10));
+
+        ShutdownReservation reservation = Assertions.assertDoesNotThrow(() -> ShutdownReservation.create(
+            createdAt,
+            executeAt,
+            Duration.ofSeconds(Long.MAX_VALUE),
+            ShutdownType.RESTART,
+            ReservationSource.MANUAL,
+            null
+        ));
+
+        Assertions.assertEquals(createdAt, reservation.countdownStartAt());
+    }
+
+    @Test
     void testFullCountdownStartsAtCreationTime() {
         Instant createdAt = Instant.parse("2026-09-06T00:00:00Z");
         Instant executeAt = createdAt.plus(Duration.ofHours(1));

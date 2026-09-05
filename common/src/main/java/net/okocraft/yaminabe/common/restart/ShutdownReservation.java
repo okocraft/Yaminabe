@@ -41,15 +41,17 @@ public record ShutdownReservation(
         ReservationSource source,
         @Nullable String reason
     ) {
+        Objects.requireNonNull(createdAt);
+        Objects.requireNonNull(executeAt);
         Objects.requireNonNull(countdown);
         if (countdown.isNegative()) {
             throw new IllegalArgumentException("countdown cannot be negative");
         }
 
-        Instant countdownStartAt = executeAt.minus(countdown);
-        if (countdownStartAt.isBefore(createdAt)) {
-            countdownStartAt = createdAt;
-        }
+        Duration untilExecution = Duration.between(createdAt, executeAt);
+        Instant countdownStartAt = countdown.compareTo(untilExecution) >= 0
+            ? createdAt
+            : executeAt.minus(countdown);
         return new ShutdownReservation(createdAt, executeAt, countdownStartAt, type, source, reason);
     }
 

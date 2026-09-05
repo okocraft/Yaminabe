@@ -26,10 +26,14 @@ public final class RestartDateTimeParser {
         Objects.requireNonNull(now);
         Objects.requireNonNull(zoneId);
 
-        if (input.indexOf('T') >= 0) {
+        if (looksLikeDateTime(input)) {
             return parseDateTime(input, now, zoneId);
         }
         return parseTime(input, now, zoneId);
+    }
+
+    private static boolean looksLikeDateTime(String input) {
+        return input.indexOf('T') >= 0 || input.indexOf('t') >= 0 || input.indexOf('-') >= 0;
     }
 
     private static Instant parseDateTime(String input, Instant now, ZoneId zoneId) {
@@ -56,7 +60,7 @@ public final class RestartDateTimeParser {
         }
     }
 
-    private static Optional<Instant> resolveFuture(LocalDateTime dateTime, Instant now, ZoneId zoneId) {
+    static Optional<Instant> resolveFuture(LocalDateTime dateTime, Instant now, ZoneId zoneId) {
         var validOffsets = zoneId.getRules().getValidOffsets(dateTime);
         if (validOffsets.isEmpty()) {
             Instant candidate = dateTime.atZone(zoneId).toInstant();

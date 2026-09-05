@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 class RestartServiceTest {
@@ -106,17 +108,22 @@ class RestartServiceTest {
     }
 
     @Test
-    void testCancellationCannotOvertakeCountdownNotification() throws InterruptedException {
+    void testCancellationNotificationDoesNotOvertakeCountdownNotification() throws InterruptedException {
         TestScheduler scheduler = new TestScheduler();
         CountDownLatch countdownEntered = new CountDownLatch(1);
         CountDownLatch releaseCountdown = new CountDownLatch(1);
-        CountDownLatch cancellationStarted = new CountDownLatch(1);
         CountDownLatch cancellationCompleted = new CountDownLatch(1);
+        CountDownLatch cancellationNotified = new CountDownLatch(1);
         RestartService.Listener listener = new RestartService.Listener() {
             @Override
             public void onCountdownStarted(ShutdownReservation reservation) {
                 countdownEntered.countDown();
                 await(releaseCountdown);
+            }
+
+            @Override
+            public void onCancelled(ShutdownReservation reservation) {
+                cancellationNotified.countDown();
             }
         };
         RestartService service = service(scheduler, listener);
@@ -126,33 +133,28 @@ class RestartServiceTest {
         Thread countdownThread = daemonThread(() -> scheduler.tasks.get(1).run());
         countdownThread.start();
 
-        Thread cancellationThread = null;
         try {
             Assertions.assertTrue(countdownEntered.await(1, TimeUnit.SECONDS));
-            cancellationThread = daemonThread(() -> {
-                cancellationStarted.countDown();
+            Thread cancellationThread = daemonThread(() -> {
                 service.cancel();
                 cancellationCompleted.countDown();
             });
             cancellationThread.start();
 
-            Assertions.assertTrue(cancellationStarted.await(1, TimeUnit.SECONDS));
-            Assertions.assertFalse(cancellationCompleted.await(100, TimeUnit.MILLISECONDS));
+            Assertions.assertTrue(cancellationCompleted.await(1, TimeUnit.SECONDS));
+            Assertions.assertFalse(cancellationNotified.await(100, TimeUnit.MILLISECONDS));
+            Assertions.assertTrue(service.current().isEmpty());
         } finally {
             releaseCountdown.countDown();
         }
 
         countdownThread.join(1000);
         Assertions.assertFalse(countdownThread.isAlive());
-        if (cancellationThread != null) {
-            cancellationThread.join(1000);
-            Assertions.assertFalse(cancellationThread.isAlive());
-        }
-        Assertions.assertTrue(cancellationCompleted.await(1, TimeUnit.SECONDS));
+        Assertions.assertTrue(cancellationNotified.await(1, TimeUnit.SECONDS));
     }
 
     @Test
-    void testCancellationListenerFailureDoesNotLeaveUnarmedReplacement() {
+    void testCancellationListenerFailureDoesNotCorruptReplacement() {
         TestScheduler scheduler = new TestScheduler();
         RestartService.Listener listener = new RestartService.Listener() {
             @Override
@@ -171,10 +173,84 @@ class RestartServiceTest {
         );
 
         Assertions.assertEquals("listener failure", exception.getMessage());
-        Assertions.assertTrue(service.current().isEmpty());
-        Assertions.assertEquals(2, scheduler.tasks.size());
+        Assertions.assertEquals(manual, service.current().orElseThrow().reservation());
+        Assertions.assertEquals(4, scheduler.tasks.size());
         Assertions.assertTrue(scheduler.tasks.get(0).cancelled);
         Assertions.assertTrue(scheduler.tasks.get(1).cancelled);
+        Assertions.assertFalse(scheduler.tasks.get(2).cancelled);
+        Assertions.assertFalse(scheduler.tasks.get(3).cancelled);
+    }
+
+    @Test
+    void testCancellationListenerRunsOutsideStateLock() throws InterruptedException {
+        TestScheduler scheduler = new TestScheduler();
+        CountDownLatch cancellationEntered = new CountDownLatch(1);
+        CountDownLatch releaseCancellation = new CountDownLatch(1);
+        CountDownLatch currentRead = new CountDownLatch(1);
+        RestartService.Listener listener = new RestartService.Listener() {
+            @Override
+            public void onCancelled(ShutdownReservation reservation) {
+                cancellationEntered.countDown();
+                await(releaseCancellation);
+            }
+        };
+        RestartService service = service(scheduler, listener);
+        ShutdownReservation automatic = reservation(ReservationSource.AUTOMATIC, Duration.ofHours(1));
+        ShutdownReservation manual = reservation(ReservationSource.MANUAL, Duration.ofHours(2));
+        service.schedule(automatic);
+
+        Thread replacementThread = daemonThread(() -> service.schedule(manual));
+        replacementThread.start();
+        Thread readerThread = null;
+        try {
+            Assertions.assertTrue(cancellationEntered.await(1, TimeUnit.SECONDS));
+            readerThread = daemonThread(() -> {
+                service.current();
+                currentRead.countDown();
+            });
+            readerThread.start();
+            Assertions.assertTrue(currentRead.await(1, TimeUnit.SECONDS));
+        } finally {
+            releaseCancellation.countDown();
+        }
+
+        replacementThread.join(1000);
+        Assertions.assertFalse(replacementThread.isAlive());
+        if (readerThread != null) {
+            readerThread.join(1000);
+            Assertions.assertFalse(readerThread.isAlive());
+        }
+        Assertions.assertEquals(manual, service.current().orElseThrow().reservation());
+    }
+
+    @Test
+    void testReentrantCancellationReturnsSuperseded() {
+        TestScheduler scheduler = new TestScheduler();
+        AtomicReference<RestartService> serviceReference = new AtomicReference<>();
+        AtomicBoolean cancelOnNotification = new AtomicBoolean();
+        RestartService.Listener listener = new RestartService.Listener() {
+            @Override
+            public void onCancelled(ShutdownReservation reservation) {
+                if (cancelOnNotification.get()) {
+                    serviceReference.get().cancel();
+                }
+            }
+        };
+        RestartService service = service(scheduler, listener);
+        serviceReference.set(service);
+        ShutdownReservation automatic = reservation(ReservationSource.AUTOMATIC, Duration.ofHours(1));
+        ShutdownReservation manual = reservation(ReservationSource.MANUAL, Duration.ofHours(2));
+        service.schedule(automatic);
+
+        cancelOnNotification.set(true);
+        RestartService.ScheduleResult result = service.schedule(manual);
+
+        Assertions.assertEquals(RestartService.ScheduleStatus.SUPERSEDED, result.status());
+        Assertions.assertEquals(automatic, result.replaced());
+        Assertions.assertFalse(result.scheduled());
+        Assertions.assertTrue(service.current().isEmpty());
+        Assertions.assertEquals(4, scheduler.tasks.size());
+        Assertions.assertTrue(scheduler.tasks.stream().allMatch(task -> task.cancelled));
     }
 
     private static RestartService service(TestScheduler scheduler, RestartService.Listener listener) {
