@@ -7,15 +7,18 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.okocraft.yaminabe.common.YaminabeLogger;
+import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
 import net.okocraft.yaminabe.velocity.command.YaminabeCommands;
 import net.okocraft.yaminabe.velocity.config.YaminabeVelocityConfig;
+import net.okocraft.yaminabe.velocity.platform.VelocityScheduler;
 import org.slf4j.Logger;
 import org.slf4j.helpers.SubstituteLogger;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static net.okocraft.yaminabe.common.YaminabeLogger.log;
 import static net.okocraft.yaminabe.common.YaminabeLogger.logDebug;
@@ -49,12 +52,36 @@ public final class YaminabeVelocityPlugin {
             log().error("Failed to load language files", e);
         }
 
-        YaminabeCommands.register(this.proxy.getCommandManager(), this);
+        YaminabeCommands.register(
+            this.proxy.getCommandManager(),
+            this,
+            new VelocityScheduler(this.proxy.getScheduler(), this),
+            this::reload
+        );
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         LanguageProvider.unload();
+    }
+
+    private void reload(Consumer<YaminabeReloader.Notification> consumer) {
+        try {
+            this.loadConfig();
+            consumer.accept(YaminabeReloader.Notification.CONFIG_RELOADED);
+        } catch (IOException e) {
+            log().error("Failed to reload config", e);
+            consumer.accept(YaminabeReloader.Notification.FAILED_TO_RELOAD_CONFIG);
+        }
+
+        try {
+            LanguageProvider.unload();
+            this.loadLanguages();
+            consumer.accept(YaminabeReloader.Notification.LANGUAGE_RELOADED);
+        } catch (IOException e) {
+            log().error("Failed to reload languages", e);
+            consumer.accept(YaminabeReloader.Notification.FAILED_TO_RELOAD_LANGUAGES);
+        }
     }
 
     private void loadConfig() throws IOException {
