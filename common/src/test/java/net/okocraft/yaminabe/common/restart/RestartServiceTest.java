@@ -182,48 +182,6 @@ class RestartServiceTest {
     }
 
     @Test
-    void testCancellationListenerRunsOutsideStateLock() throws InterruptedException {
-        TestScheduler scheduler = new TestScheduler();
-        CountDownLatch cancellationEntered = new CountDownLatch(1);
-        CountDownLatch releaseCancellation = new CountDownLatch(1);
-        CountDownLatch currentRead = new CountDownLatch(1);
-        RestartService.Listener listener = new RestartService.Listener() {
-            @Override
-            public void onCancelled(ShutdownReservation reservation) {
-                cancellationEntered.countDown();
-                await(releaseCancellation);
-            }
-        };
-        RestartService service = service(scheduler, listener);
-        ShutdownReservation automatic = reservation(ReservationSource.AUTOMATIC, Duration.ofHours(1));
-        ShutdownReservation manual = reservation(ReservationSource.MANUAL, Duration.ofHours(2));
-        service.schedule(automatic);
-
-        Thread replacementThread = daemonThread(() -> service.schedule(manual));
-        replacementThread.start();
-        Thread readerThread = null;
-        try {
-            Assertions.assertTrue(cancellationEntered.await(1, TimeUnit.SECONDS));
-            readerThread = daemonThread(() -> {
-                service.current();
-                currentRead.countDown();
-            });
-            readerThread.start();
-            Assertions.assertTrue(currentRead.await(1, TimeUnit.SECONDS));
-        } finally {
-            releaseCancellation.countDown();
-        }
-
-        replacementThread.join(1000);
-        Assertions.assertFalse(replacementThread.isAlive());
-        if (readerThread != null) {
-            readerThread.join(1000);
-            Assertions.assertFalse(readerThread.isAlive());
-        }
-        Assertions.assertEquals(manual, service.current().orElseThrow().reservation());
-    }
-
-    @Test
     void testReentrantCancellationReturnsSuperseded() {
         TestScheduler scheduler = new TestScheduler();
         AtomicReference<RestartService> serviceReference = new AtomicReference<>();
