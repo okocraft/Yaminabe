@@ -52,7 +52,7 @@ class RestartDateTimeParserTest {
     }
 
     @Test
-    void testDateOnlyInputUsesDateTimeError() {
+    void testInvalidInputUsesDateOrTimeError() {
         Instant now = Instant.parse("2026-09-06T03:00:00Z");
 
         IllegalArgumentException exception = Assertions.assertThrows(
@@ -60,7 +60,7 @@ class RestartDateTimeParserTest {
             () -> RestartDateTimeParser.parseFuture("2026-09-10", now, TOKYO)
         );
 
-        Assertions.assertEquals("invalid date-time: 2026-09-10", exception.getMessage());
+        Assertions.assertEquals("invalid date/time: 2026-09-10", exception.getMessage());
     }
 
     @Test

@@ -32,7 +32,7 @@ public final class RestartService implements AutoCloseable {
         Objects.requireNonNull(reservation);
         ActiveReservation next = new ActiveReservation(reservation);
         ActiveReservation previous;
-        boolean previousNotificationDeferred = false;
+        @Nullable TerminalNotification cancellation;
 
         synchronized (this.stateLock) {
             previous = this.current;
@@ -43,27 +43,20 @@ public final class RestartService implements AutoCloseable {
             }
 
             this.current = next;
-            if (previous != null) {
-                previous.cancel();
-                previousNotificationDeferred = previous.deferTerminalNotification(TerminalNotification.CANCELLED);
+            try {
+                this.arm(next);
+            } catch (RuntimeException | Error exception) {
+                if (this.current == next) {
+                    this.current = previous;
+                }
+                next.discard();
+                throw exception;
             }
+            cancellation = previous == null ? null : previous.cancel();
         }
 
-        try {
-            this.arm(next);
-        } catch (RuntimeException | Error exception) {
-            Removal removal = this.removeIfCurrent(next);
-            if (previous != null && !previousNotificationDeferred) {
-                notifyTerminal(this.listener, previous.reservation, TerminalNotification.CANCELLED, exception);
-            }
-            if (removal.removed && !removal.notificationDeferred) {
-                notifyTerminal(this.listener, next.reservation, TerminalNotification.CANCELLED, exception);
-            }
-            throw exception;
-        }
-
-        if (previous != null && !previousNotificationDeferred) {
-            this.listener.onCancelled(previous.reservation);
+        if (cancellation != null) {
+            this.notifyTerminal(previous.reservation, cancellation);
         }
 
         synchronized (this.stateLock) {
@@ -83,26 +76,24 @@ public final class RestartService implements AutoCloseable {
     public Optional<Snapshot> current() {
         synchronized (this.stateLock) {
             ActiveReservation active = this.current;
-            return active == null ? Optional.empty() : Optional.of(new Snapshot(active.reservation, active.phase));
+            return active == null ? Optional.empty() : Optional.of(new Snapshot(active.reservation, active.phase()));
         }
     }
 
     public Optional<ShutdownReservation> cancel() {
         ActiveReservation active;
-        boolean notificationDeferred;
+        @Nullable TerminalNotification notification;
         synchronized (this.stateLock) {
             active = this.current;
             if (active == null) {
                 return Optional.empty();
             }
-
             this.current = null;
-            active.cancel();
-            notificationDeferred = active.deferTerminalNotification(TerminalNotification.CANCELLED);
+            notification = active.cancel();
         }
 
-        if (!notificationDeferred) {
-            this.listener.onCancelled(active.reservation);
+        if (notification != null) {
+            this.notifyTerminal(active.reservation, notification);
         }
         return Optional.of(active.reservation);
     }
@@ -153,32 +144,17 @@ public final class RestartService implements AutoCloseable {
     }
 
     private void execute(ActiveReservation active) {
-        boolean notificationDeferred;
+        @Nullable TerminalNotification notification;
         synchronized (this.stateLock) {
-            if (this.current != active || !active.beginExecution()) {
+            if (this.current != active) {
                 return;
             }
             this.current = null;
-            notificationDeferred = active.deferTerminalNotification(TerminalNotification.EXECUTE);
+            notification = active.execute();
         }
 
-        if (!notificationDeferred) {
-            this.listener.onExecute(active.reservation);
-        }
-    }
-
-    private Removal removeIfCurrent(ActiveReservation active) {
-        synchronized (this.stateLock) {
-            if (this.current != active) {
-                active.cancel();
-                return new Removal(false, false);
-            }
-            this.current = null;
-            active.cancel();
-            return new Removal(
-                true,
-                active.deferTerminalNotification(TerminalNotification.CANCELLED)
-            );
+        if (notification != null) {
+            this.notifyTerminal(active.reservation, notification);
         }
     }
 
@@ -259,89 +235,109 @@ public final class RestartService implements AutoCloseable {
         }
     }
 
+    private enum State {
+        WAITING,
+        COUNTDOWN_NOTIFYING,
+        COUNTDOWN,
+        DONE
+    }
+
     private enum TerminalNotification {
         CANCELLED,
         EXECUTE
     }
 
-    private record Removal(boolean removed, boolean notificationDeferred) {
-    }
-
     private static final class ActiveReservation {
 
         private final ShutdownReservation reservation;
-        private Phase phase = Phase.WAITING;
-        private boolean active = true;
+        private State state = State.WAITING;
         private @Nullable CancellableTask executionTask;
         private @Nullable CancellableTask countdownTask;
-        private boolean countdownNotificationInProgress;
         private @Nullable TerminalNotification deferredTerminalNotification;
 
         private ActiveReservation(ShutdownReservation reservation) {
             this.reservation = reservation;
         }
 
-        private synchronized void setExecutionTask(CancellableTask task) {
+        private Phase phase() {
+            return switch (this.state) {
+                case WAITING -> Phase.WAITING;
+                case COUNTDOWN_NOTIFYING, COUNTDOWN -> Phase.COUNTDOWN;
+                case DONE -> throw new IllegalStateException("completed reservation cannot be current");
+            };
+        }
+
+        private void setExecutionTask(CancellableTask task) {
             this.executionTask = this.setTask(this.executionTask, task);
         }
 
-        private synchronized void setCountdownTask(CancellableTask task) {
+        private void setCountdownTask(CancellableTask task) {
             this.countdownTask = this.setTask(this.countdownTask, task);
         }
 
-        private synchronized CancellableTask setTask(@Nullable CancellableTask existing, CancellableTask task) {
+        private CancellableTask setTask(@Nullable CancellableTask existing, CancellableTask task) {
             Objects.requireNonNull(task);
             if (existing != null) {
                 task.cancel();
                 throw new IllegalStateException("task is already set");
             }
-            if (!this.active) {
+            if (this.state == State.DONE) {
                 task.cancel();
             }
             return task;
         }
 
-        private synchronized boolean startCountdown() {
-            if (!this.active || this.phase != Phase.WAITING) {
+        private boolean startCountdown() {
+            if (this.state != State.WAITING) {
                 return false;
             }
-            this.phase = Phase.COUNTDOWN;
-            this.countdownNotificationInProgress = true;
+            this.state = State.COUNTDOWN_NOTIFYING;
             return true;
         }
 
-        private synchronized boolean deferTerminalNotification(TerminalNotification notification) {
-            if (!this.countdownNotificationInProgress) {
-                return false;
+        private @Nullable TerminalNotification finishCountdownNotification() {
+            if (this.state == State.COUNTDOWN_NOTIFYING) {
+                this.state = State.COUNTDOWN;
             }
-            if (this.deferredTerminalNotification != null) {
-                throw new IllegalStateException("terminal notification is already deferred");
-            }
-            this.deferredTerminalNotification = notification;
-            return true;
-        }
-
-        private synchronized @Nullable TerminalNotification finishCountdownNotification() {
-            this.countdownNotificationInProgress = false;
             TerminalNotification deferred = this.deferredTerminalNotification;
             this.deferredTerminalNotification = null;
             return deferred;
         }
 
-        private synchronized boolean beginExecution() {
-            if (!this.active) {
-                return false;
+        private @Nullable TerminalNotification cancel() {
+            State previous = this.state;
+            if (previous == State.DONE) {
+                return null;
             }
-            this.active = false;
+            this.state = State.DONE;
+            cancel(this.executionTask);
             cancel(this.countdownTask);
-            return true;
+            return this.complete(previous, TerminalNotification.CANCELLED);
         }
 
-        private synchronized void cancel() {
-            if (!this.active) {
-                return;
+        private @Nullable TerminalNotification execute() {
+            State previous = this.state;
+            if (previous == State.DONE) {
+                return null;
             }
-            this.active = false;
+            this.state = State.DONE;
+            cancel(this.countdownTask);
+            return this.complete(previous, TerminalNotification.EXECUTE);
+        }
+
+        private @Nullable TerminalNotification complete(State previous, TerminalNotification notification) {
+            if (previous != State.COUNTDOWN_NOTIFYING) {
+                return notification;
+            }
+            if (this.deferredTerminalNotification != null) {
+                throw new IllegalStateException("terminal notification is already deferred");
+            }
+            this.deferredTerminalNotification = notification;
+            return null;
+        }
+
+        private void discard() {
+            this.state = State.DONE;
             cancel(this.executionTask);
             cancel(this.countdownTask);
         }

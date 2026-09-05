@@ -7,56 +7,41 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoField;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.LongStream;
 
 public final class RestartDateTimeParser {
 
-    private static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
-        .appendPattern("HH:mm")
-        .optionalStart()
-        .appendLiteral(':')
-        .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-        .optionalEnd()
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
+        .parseCaseInsensitive()
+        .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         .toFormatter();
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm[:ss]");
 
     public static Instant parseFuture(String input, Instant now, ZoneId zoneId) {
         Objects.requireNonNull(input);
         Objects.requireNonNull(now);
         Objects.requireNonNull(zoneId);
 
-        if (looksLikeDateTime(input)) {
-            return parseDateTime(input, now, zoneId);
-        }
-        return parseTime(input, now, zoneId);
-    }
-
-    private static boolean looksLikeDateTime(String input) {
-        return input.indexOf('T') >= 0 || input.indexOf('t') >= 0 || input.indexOf('-') >= 0;
-    }
-
-    private static Instant parseDateTime(String input, Instant now, ZoneId zoneId) {
         try {
-            LocalDateTime dateTime = LocalDateTime.parse(input, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            LocalDateTime dateTime = LocalDateTime.parse(input, DATE_TIME_FORMATTER);
             return resolveFuture(dateTime, now, zoneId)
                 .orElseThrow(() -> new IllegalArgumentException("date-time must be in the future: " + input));
-        } catch (DateTimeParseException exception) {
-            throw new IllegalArgumentException("invalid date-time: " + input, exception);
+        } catch (DateTimeParseException ignored) {
         }
-    }
 
-    private static Instant parseTime(String input, Instant now, ZoneId zoneId) {
         try {
             LocalTime time = LocalTime.parse(input, TIME_FORMATTER);
-            LocalDateTime candidate = LocalDateTime.of(now.atZone(zoneId).toLocalDate(), time);
-            Optional<Instant> sameDay = resolveFuture(candidate, now, zoneId);
-            if (sameDay.isPresent()) {
-                return sameDay.orElseThrow();
-            }
-            return resolveFuture(candidate.plusDays(1), now, zoneId).orElseThrow();
+            LocalDateTime today = LocalDateTime.of(now.atZone(zoneId).toLocalDate(), time);
+            return LongStream.rangeClosed(0, 1)
+                .mapToObj(today::plusDays)
+                .map(dateTime -> resolveFuture(dateTime, now, zoneId))
+                .flatMap(Optional::stream)
+                .findFirst()
+                .orElseThrow();
         } catch (DateTimeParseException exception) {
-            throw new IllegalArgumentException("invalid time: " + input, exception);
+            throw new IllegalArgumentException("invalid date/time: " + input, exception);
         }
     }
 

@@ -30,6 +30,8 @@ class RestartDurationParserTest {
     @Test
     void testRejectsInvalidDuration() {
         Assertions.assertThrows(IllegalArgumentException.class, () -> RestartDurationParser.parse("1h 30m"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RestartDurationParser.parse("1h1h"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RestartDurationParser.parse("1m1h"));
         Assertions.assertThrows(IllegalArgumentException.class, () -> RestartDurationParser.parse("1x"));
         Assertions.assertThrows(IllegalArgumentException.class, () -> RestartDurationParser.parse(""));
     }
