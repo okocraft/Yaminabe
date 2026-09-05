@@ -30,7 +30,7 @@ public final class VelocityScheduler implements net.okocraft.yaminabe.common.pla
 
         var builder = this.scheduler.buildTask(this.plugin, task);
         if (!delay.isZero()) {
-            builder.delay(delay);
+            builder = builder.delay(delay);
         }
         var scheduledTask = builder.schedule();
         return scheduledTask::cancel;
