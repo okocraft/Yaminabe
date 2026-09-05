@@ -33,6 +33,16 @@ The server directory is `plugin/run/`.
 
 NOTE: When you run a Minecraft server, you indicate your agreement to [Minecraft Eula](https://www.minecraft.net/en-us/eula).
 
+### Run Velocity proxy for debugging
+
+This project can also run a Velocity proxy with the Velocity module loaded.
+
+```shell
+./gradlew runVelocity
+```
+
+After executing this command, Gradle starts a Velocity proxy with this plugin.
+
 ## License
 
 This project is under the GPL-3.0 license. Please see [LICENSE](LICENSE) for more info.
