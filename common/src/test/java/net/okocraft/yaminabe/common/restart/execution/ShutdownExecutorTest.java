@@ -17,8 +17,10 @@ class ShutdownExecutorTest {
         TestController controller = new TestController();
         CompletableFuture<Boolean> first = new CompletableFuture<>();
         CompletableFuture<Boolean> second = new CompletableFuture<>();
+        CompletableFuture<Void> kick = new CompletableFuture<>();
         controller.commandResults.add(first);
         controller.commandResults.add(second);
+        controller.kickResult = kick;
 
         CompletionStage<Void> execution = new ShutdownExecutor(controller).execute(
             ShutdownType.RESTART,
@@ -34,6 +36,10 @@ class ShutdownExecutorTest {
         Assertions.assertFalse(execution.toCompletableFuture().isDone());
 
         second.complete(true);
+        Assertions.assertEquals(List.of("command:first", "command:second", "kick"), controller.events);
+        Assertions.assertFalse(execution.toCompletableFuture().isDone());
+
+        kick.complete(null);
         execution.toCompletableFuture().join();
         Assertions.assertEquals(
             List.of("command:first", "command:second", "kick", "restart"),
@@ -61,7 +67,7 @@ class ShutdownExecutorTest {
         failed.completeExceptionally(new IllegalStateException("command failed"));
         controller.commandResults.add(failed);
         controller.commandResults.add(CompletableFuture.completedFuture(false));
-        controller.throwOnKick = true;
+        controller.kickResult = CompletableFuture.failedFuture(new IllegalStateException("kick failed"));
 
         new ShutdownExecutor(controller).execute(
             ShutdownType.STOP,
@@ -79,7 +85,7 @@ class ShutdownExecutorTest {
         private final List<String> events = new ArrayList<>();
         private final List<CompletableFuture<Boolean>> commandResults = new ArrayList<>();
         private int commandIndex;
-        private boolean throwOnKick;
+        private CompletionStage<Void> kickResult = CompletableFuture.completedFuture(null);
 
         @Override
         public CompletionStage<Boolean> dispatchConsoleCommand(String command) {
@@ -88,11 +94,9 @@ class ShutdownExecutorTest {
         }
 
         @Override
-        public void kickAll(Component reason) {
+        public CompletionStage<Void> kickAll(Component reason) {
             this.events.add("kick");
-            if (this.throwOnKick) {
-                throw new IllegalStateException("kick failed");
-            }
+            return this.kickResult;
         }
 
         @Override
