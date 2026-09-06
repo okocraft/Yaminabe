@@ -13,6 +13,7 @@ import net.okocraft.yaminabe.common.restart.command.RestartCommandMessages;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandSettings;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandSource;
 import net.okocraft.yaminabe.common.restart.command.RestartNowCommand;
+import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownMessages;
 import net.okocraft.yaminabe.common.restart.execution.RestartExecutionMessages;
 import org.jetbrains.annotations.NotNullByDefault;
 
@@ -40,7 +41,12 @@ public final class YaminabeCommands {
     }
 
     public static List<DefaultMessageDefiner> getDefiners() {
-        return List.of(CommandMessages.DEFINER, RestartCommandMessages.DEFINER, RestartExecutionMessages.DEFINER);
+        return List.of(
+            CommandMessages.DEFINER,
+            RestartCommandMessages.DEFINER,
+            RestartExecutionMessages.DEFINER,
+            RestartCountdownMessages.DEFINER
+        );
     }
 
     public static void register(
