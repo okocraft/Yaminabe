@@ -48,32 +48,51 @@ public final class PaperServerController implements ServerController {
     @Override
     public CompletionStage<Void> kickAll(Component reason) {
         Objects.requireNonNull(reason);
-        List<Player> players = List.copyOf(this.server.getOnlinePlayers());
-        List<CompletableFuture<Void>> kicks = new ArrayList<>(players.size());
-        for (Player player : players) {
-            CompletableFuture<Void> kicked = new CompletableFuture<>();
-            kicks.add(kicked);
-            try {
-                boolean scheduled = this.entityScheduler.execute(
-                    player,
-                    () -> {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        try {
+            this.server.getGlobalRegionScheduler().execute(this.plugin, () -> {
+                try {
+                    List<Player> players = List.copyOf(this.server.getOnlinePlayers());
+                    List<CompletableFuture<Void>> kicks = new ArrayList<>(players.size());
+                    for (Player player : players) {
+                        CompletableFuture<Void> kicked = new CompletableFuture<>();
+                        kicks.add(kicked);
                         try {
-                            player.kick(reason);
-                            kicked.complete(null);
+                            boolean scheduled = this.entityScheduler.execute(
+                                player,
+                                () -> {
+                                    try {
+                                        player.kick(reason);
+                                        kicked.complete(null);
+                                    } catch (RuntimeException exception) {
+                                        kicked.completeExceptionally(exception);
+                                    }
+                                },
+                                () -> kicked.complete(null)
+                            );
+                            if (!scheduled) {
+                                kicked.complete(null);
+                            }
                         } catch (RuntimeException exception) {
                             kicked.completeExceptionally(exception);
                         }
-                    },
-                    () -> kicked.complete(null)
-                );
-                if (!scheduled) {
-                    kicked.complete(null);
+                    }
+                    CompletableFuture.allOf(kicks.toArray(CompletableFuture[]::new))
+                        .whenComplete((ignored, failure) -> {
+                            if (failure == null) {
+                                result.complete(null);
+                            } else {
+                                result.completeExceptionally(failure);
+                            }
+                        });
+                } catch (RuntimeException exception) {
+                    result.completeExceptionally(exception);
                 }
-            } catch (RuntimeException exception) {
-                kicked.completeExceptionally(exception);
-            }
+            });
+        } catch (RuntimeException exception) {
+            result.completeExceptionally(exception);
         }
-        return CompletableFuture.allOf(kicks.toArray(CompletableFuture[]::new));
+        return result;
     }
 
     @Override
