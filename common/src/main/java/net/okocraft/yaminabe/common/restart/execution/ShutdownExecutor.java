@@ -22,7 +22,7 @@ public final class ShutdownExecutor {
     }
 
     public CompletionStage<Void> execute(ShutdownType type, List<String> commands) {
-        return this.execute(type, commands, null);
+        return this.executeInternal(type, commands, null);
     }
 
     public CompletionStage<Void> execute(
@@ -30,10 +30,10 @@ public final class ShutdownExecutor {
         List<String> commands,
         Component kickReason
     ) {
-        return this.execute(type, commands, (Component) Objects.requireNonNull(kickReason));
+        return this.executeInternal(type, commands, Objects.requireNonNull(kickReason));
     }
 
-    private CompletionStage<Void> execute(
+    private CompletionStage<Void> executeInternal(
         ShutdownType type,
         List<String> commands,
         @Nullable Component kickReason
