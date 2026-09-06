@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -66,6 +67,7 @@ class PaperShutdownExecutorTest {
     private static PaperRestartSettings settings() {
         return new PaperRestartSettings(
             new RestartCommandSettings(Duration.ZERO, ZoneOffset.UTC),
+            Optional.empty(),
             new RestartCountdownSettings(false, BossBar.Color.RED, BossBar.Overlay.PROGRESS, Set.of()),
             new PaperRestartSettings.ShutdownSettings(List.of("restart-command"), true),
             new PaperRestartSettings.ShutdownSettings(List.of("stop-command"), false)
