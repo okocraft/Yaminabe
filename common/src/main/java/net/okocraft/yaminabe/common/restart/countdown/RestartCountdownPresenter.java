@@ -254,7 +254,6 @@ public final class RestartCountdownPresenter implements AutoCloseable {
 
     private static final class ActiveCountdown {
         private final ShutdownReservation reservation;
-        private final RestartCountdownSettings settings;
         private final List<Long> broadcastThresholds;
         private final long totalSeconds;
         private final @Nullable BossBar bossBar;
@@ -271,7 +270,6 @@ public final class RestartCountdownPresenter implements AutoCloseable {
             @Nullable BossBar bossBar
         ) {
             this.reservation = reservation;
-            this.settings = settings;
             this.broadcastThresholds = settings.broadcastAtSeconds().stream()
                 .sorted(Comparator.reverseOrder())
                 .toList();
