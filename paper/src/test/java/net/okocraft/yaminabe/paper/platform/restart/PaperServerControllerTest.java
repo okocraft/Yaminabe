@@ -31,6 +31,26 @@ class PaperServerControllerTest {
     }
 
     @Test
+    void testKickAllCollectsPlayersOnGlobalRegion() {
+        Fixture fixture = fixture(false);
+        AtomicReference<Runnable> globalTask = new AtomicReference<>();
+        Mockito.doAnswer(invocation -> {
+            globalTask.set(invocation.getArgument(1));
+            return null;
+        }).when(fixture.globalScheduler).execute(Mockito.eq(fixture.plugin), Mockito.any(Runnable.class));
+        Mockito.doReturn(List.of()).when(fixture.server).getOnlinePlayers();
+
+        var controller = new PaperServerController(fixture.plugin, fixture.entityScheduler);
+        var result = controller.kickAll(Component.empty()).toCompletableFuture();
+
+        Mockito.verify(fixture.server, Mockito.never()).getOnlinePlayers();
+        Assertions.assertFalse(result.isDone());
+        globalTask.get().run();
+        Mockito.verify(fixture.server).getOnlinePlayers();
+        Assertions.assertTrue(result.isDone());
+    }
+
+    @Test
     void testKickAllWaitsForEveryEntityTask() {
         Fixture fixture = fixture(true);
         Player first = Mockito.mock(Player.class);
