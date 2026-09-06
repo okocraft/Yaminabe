@@ -48,19 +48,24 @@ public final class PaperServerController implements ServerController {
     @Override
     public CompletionStage<Void> kickAll(Component reason) {
         Objects.requireNonNull(reason);
-        List<CompletableFuture<Void>> kicks = new ArrayList<>();
-        for (Player player : this.server.getOnlinePlayers()) {
+        List<Player> players = List.copyOf(this.server.getOnlinePlayers());
+        List<CompletableFuture<Void>> kicks = new ArrayList<>(players.size());
+        for (Player player : players) {
             CompletableFuture<Void> kicked = new CompletableFuture<>();
             kicks.add(kicked);
             try {
-                boolean scheduled = this.entityScheduler.execute(player, () -> {
-                    try {
-                        player.kick(reason);
-                        kicked.complete(null);
-                    } catch (RuntimeException exception) {
-                        kicked.completeExceptionally(exception);
-                    }
-                });
+                boolean scheduled = this.entityScheduler.execute(
+                    player,
+                    () -> {
+                        try {
+                            player.kick(reason);
+                            kicked.complete(null);
+                        } catch (RuntimeException exception) {
+                            kicked.completeExceptionally(exception);
+                        }
+                    },
+                    () -> kicked.complete(null)
+                );
                 if (!scheduled) {
                     kicked.complete(null);
                 }
