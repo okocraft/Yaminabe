@@ -34,12 +34,19 @@ public final class AutoRestartCommand {
         );
 
         return LiteralArgumentBuilder.<S>literal(literal)
+            .requires(source -> hasAnyPermission(source, sourceAdapter))
             .then(createAction("restart", RestartCommandPermissions.RESTART, ShutdownType.RESTART, executor, sourceAdapter))
             .then(createAction("stop", RestartCommandPermissions.STOP, ShutdownType.STOP, executor, sourceAdapter))
             .then(LiteralArgumentBuilder.<S>literal("cancel")
                 .requires(source -> sourceAdapter.hasPermission(source, RestartCommandPermissions.CANCEL))
                 .executes(context -> executor.cancel(context.getSource())))
             .build();
+    }
+
+    private static <S> boolean hasAnyPermission(S source, RestartCommandSource<S> sourceAdapter) {
+        return sourceAdapter.hasPermission(source, RestartCommandPermissions.RESTART)
+            || sourceAdapter.hasPermission(source, RestartCommandPermissions.STOP)
+            || sourceAdapter.hasPermission(source, RestartCommandPermissions.CANCEL);
     }
 
     private static <S> LiteralArgumentBuilder<S> createAction(
