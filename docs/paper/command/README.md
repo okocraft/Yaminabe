@@ -5,6 +5,8 @@ Commands provided by Yaminabe on Paper/Folia.
 | Command                                    | Aliases         | Description                                       |
 |--------------------------------------------|-----------------|---------------------------------------------------|
 | [`/yaminabe`](yaminabe.md)                 | -               | Plugin management commands.                       |
+| [`/autorestart`](autorestart.md)           | `are`           | Schedules restarts and shutdowns.                 |
+| [`/restart`](autorestart.md#restart-on-folia) | -            | Immediate Yaminabe restart on Folia only.         |
 | [`/anvil`](anvil.md)                       | -               | Opens an anvil menu without the block.            |
 | [`/cartographytable`](cartographytable.md) | -               | Opens a cartography table menu without the block. |
 | [`/disposal`](disposal.md)                 | `trash`         | Opens a menu for discarding items.                |
