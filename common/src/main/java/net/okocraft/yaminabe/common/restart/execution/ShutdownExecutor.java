@@ -21,7 +21,7 @@ public final class ShutdownExecutor {
         this.controller = Objects.requireNonNull(controller);
     }
 
-    public CompletionStage<Void> execute(ShutdownType type, List<String> commands) {
+    public CompletionStage<Void> executeWithoutKick(ShutdownType type, List<String> commands) {
         return this.executeInternal(type, commands, null);
     }
 
