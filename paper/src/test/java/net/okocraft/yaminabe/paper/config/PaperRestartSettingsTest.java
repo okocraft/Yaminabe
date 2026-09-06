@@ -38,7 +38,7 @@ class PaperRestartSettingsTest {
         PaperRestartSettings settings = PaperRestartSettings.from(holder.get().restart(), warnings::add);
 
         Assertions.assertEquals(Duration.ZERO, settings.commandSettings().defaultCountdown());
-        Assertions.assertEquals(ZoneId.systemDefault(), settings.commandSettings().timeZone());
+        Assertions.assertEquals(ZoneId.systemDefault(), settings.commandSettings().zoneId());
         Assertions.assertEquals(2, warnings.size());
     }
 }
