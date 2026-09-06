@@ -1,5 +1,6 @@
 package net.okocraft.yaminabe.velocity.platform.restart;
 
+import net.okocraft.yaminabe.velocity.config.VelocityRestartSettings;
 import net.okocraft.yaminabe.velocity.config.YaminabeVelocityConfig;
 import org.jetbrains.annotations.NotNullByDefault;
 
@@ -14,11 +15,11 @@ public interface VelocityRestartStrategy {
 
     void prepare();
 
-    static VelocityRestartStrategy from(YaminabeVelocityConfig.Restart settings) {
+    static VelocityRestartStrategy from(VelocityRestartSettings settings) {
         Objects.requireNonNull(settings);
         return switch (settings.mode()) {
             case SUPERVISOR -> supervisor();
-            case COMMAND -> command(settings.command());
+            case COMMAND -> command(settings.restartCommand());
         };
     }
 
