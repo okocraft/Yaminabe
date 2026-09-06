@@ -126,6 +126,15 @@ final class RestartCommandExecutor<S> {
                     case RESTART -> RestartCommandMessages.RESTART_CANCELLED.apply(time);
                     case STOP -> RestartCommandMessages.STOP_CANCELLED.apply(time);
                 });
+                this.service.current()
+                    .map(RestartService.Snapshot::reservation)
+                    .filter(current -> current.source() == ReservationSource.AUTOMATIC)
+                    .ifPresent(current -> this.sourceAdapter.sendMessage(
+                        source,
+                        RestartCommandMessages.AUTOMATIC_RESTART_SCHEDULED.apply(
+                            this.format(current.executeAt(), settings)
+                        )
+                    ));
                 return 1;
             })
             .orElseGet(() -> {

@@ -1,5 +1,6 @@
 package net.okocraft.yaminabe.velocity.config;
 
+import net.kyori.adventure.bossbar.BossBar;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -46,10 +47,17 @@ class YaminabeVelocityConfigTest {
         Assertions.assertTrue(restart.command().isEmpty());
         Assertions.assertEquals(60, restart.defaultCountdownSeconds());
         Assertions.assertEquals("", restart.timeZone());
+        Assertions.assertTrue(restart.scheduled().enabled());
+        Assertions.assertEquals(List.of("06:00"), restart.scheduled().times());
+        Assertions.assertEquals(60, restart.scheduled().countdownSeconds());
         Assertions.assertTrue(restart.beforeRestart().commands().isEmpty());
         Assertions.assertTrue(restart.beforeRestart().kickPlayers());
         Assertions.assertTrue(restart.beforeShutdown().commands().isEmpty());
         Assertions.assertTrue(restart.beforeShutdown().kickPlayers());
+        Assertions.assertTrue(restart.countdown().bossBar().enabled());
+        Assertions.assertEquals(BossBar.Color.RED, restart.countdown().bossBar().color());
+        Assertions.assertEquals(BossBar.Overlay.NOTCHED_10, restart.countdown().bossBar().overlay());
+        Assertions.assertEquals(List.of(60, 30, 10, 5, 4, 3, 2, 1), restart.countdown().broadcastAtSeconds());
     }
 
     @Test
@@ -63,6 +71,12 @@ class YaminabeVelocityConfigTest {
                 - velocity.jar
               default-countdown-seconds: 30
               time-zone: Asia/Tokyo
+              scheduled:
+                enabled: true
+                times:
+                  - '03:00'
+                  - '15:30'
+                countdown-seconds: 90
               before-restart:
                 commands:
                   - alert restarting
@@ -71,6 +85,14 @@ class YaminabeVelocityConfigTest {
                 commands:
                   - alert stopping
                 kick-players: true
+              countdown:
+                boss-bar:
+                  enabled: false
+                  color: BLUE
+                  overlay: PROGRESS
+                broadcast-at-seconds:
+                  - 30
+                  - 5
             """);
 
         var holder = new YaminabeVelocityConfig.Holder(dir);
@@ -81,10 +103,17 @@ class YaminabeVelocityConfigTest {
         Assertions.assertEquals(List.of("java", "-jar", "velocity.jar"), restart.command());
         Assertions.assertEquals(30, restart.defaultCountdownSeconds());
         Assertions.assertEquals("Asia/Tokyo", restart.timeZone());
+        Assertions.assertTrue(restart.scheduled().enabled());
+        Assertions.assertEquals(List.of("03:00", "15:30"), restart.scheduled().times());
+        Assertions.assertEquals(90, restart.scheduled().countdownSeconds());
         Assertions.assertEquals(List.of("alert restarting"), restart.beforeRestart().commands());
         Assertions.assertFalse(restart.beforeRestart().kickPlayers());
         Assertions.assertEquals(List.of("alert stopping"), restart.beforeShutdown().commands());
         Assertions.assertTrue(restart.beforeShutdown().kickPlayers());
+        Assertions.assertFalse(restart.countdown().bossBar().enabled());
+        Assertions.assertEquals(BossBar.Color.BLUE, restart.countdown().bossBar().color());
+        Assertions.assertEquals(BossBar.Overlay.PROGRESS, restart.countdown().bossBar().overlay());
+        Assertions.assertEquals(List.of(30, 5), restart.countdown().broadcastAtSeconds());
     }
 
     @Test
