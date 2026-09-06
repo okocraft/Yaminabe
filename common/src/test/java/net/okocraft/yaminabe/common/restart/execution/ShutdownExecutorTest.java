@@ -46,7 +46,7 @@ class ShutdownExecutorTest {
         TestController controller = new TestController();
         controller.commandResults.add(CompletableFuture.completedFuture(true));
 
-        new ShutdownExecutor(controller).execute(
+        new ShutdownExecutor(controller).executeWithoutKick(
             ShutdownType.STOP,
             List.of("save")
         ).toCompletableFuture().join();
