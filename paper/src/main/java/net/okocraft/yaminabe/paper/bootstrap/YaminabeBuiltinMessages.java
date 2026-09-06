@@ -7,9 +7,7 @@ import java.util.List;
 
 final class YaminabeBuiltinMessages {
 
-    static final List<DefaultMessageDefiner> DEFINERS = List.of(
-        YaminabeCommands.getDefiner()
-    );
+    static final List<DefaultMessageDefiner> DEFINERS = YaminabeCommands.getDefiners();
 
     private YaminabeBuiltinMessages() {
         throw new UnsupportedOperationException();

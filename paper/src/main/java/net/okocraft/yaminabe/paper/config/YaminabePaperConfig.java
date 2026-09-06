@@ -1,5 +1,6 @@
 package net.okocraft.yaminabe.paper.config;
 
+import net.kyori.adventure.bossbar.BossBar;
 import net.okocraft.yaminabe.common.config.ConfigLoader;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
@@ -35,11 +36,28 @@ public class YaminabePaperConfig {
     @ConfigSerializable
     public static class Restart {
 
+        @Comment("Default countdown duration in seconds used by manual restart and shutdown commands.")
+        private long defaultCountdownSeconds = 60;
+
+        @Comment("Time zone used by restart commands. Leave empty to use the system default time zone.")
+        private String timeZone = "";
+
         @Comment("Actions performed before a restart.")
         private BeforeShutdown beforeRestart = new BeforeShutdown();
 
         @Comment("Actions performed before a shutdown.")
         private BeforeShutdown beforeShutdown = new BeforeShutdown();
+
+        @Comment("Countdown presentation settings.")
+        private Countdown countdown = new Countdown();
+
+        public long defaultCountdownSeconds() {
+            return this.defaultCountdownSeconds;
+        }
+
+        public String timeZone() {
+            return this.timeZone;
+        }
 
         public BeforeShutdown beforeRestart() {
             return this.beforeRestart;
@@ -47,6 +65,10 @@ public class YaminabePaperConfig {
 
         public BeforeShutdown beforeShutdown() {
             return this.beforeShutdown;
+        }
+
+        public Countdown countdown() {
+            return this.countdown;
         }
     }
 
@@ -65,6 +87,49 @@ public class YaminabePaperConfig {
 
         public boolean kickPlayers() {
             return this.kickPlayers;
+        }
+    }
+
+    @ConfigSerializable
+    public static class Countdown {
+
+        @Comment("Boss bar settings used while a restart or shutdown countdown is active.")
+        private BossBarSettings bossBar = new BossBarSettings();
+
+        @Comment("Remaining seconds at which a chat countdown message is broadcast.")
+        private List<Integer> broadcastAtSeconds = new ArrayList<>(List.of(60, 30, 10, 5, 4, 3, 2, 1));
+
+        public BossBarSettings bossBar() {
+            return this.bossBar;
+        }
+
+        public List<Integer> broadcastAtSeconds() {
+            return List.copyOf(this.broadcastAtSeconds);
+        }
+    }
+
+    @ConfigSerializable
+    public static class BossBarSettings {
+
+        @Comment("Whether the countdown boss bar is shown.")
+        private boolean enabled = true;
+
+        @Comment("Boss bar color.")
+        private BossBar.Color color = BossBar.Color.RED;
+
+        @Comment("Boss bar overlay.")
+        private BossBar.Overlay overlay = BossBar.Overlay.NOTCHED_10;
+
+        public boolean enabled() {
+            return this.enabled;
+        }
+
+        public BossBar.Color color() {
+            return this.color;
+        }
+
+        public BossBar.Overlay overlay() {
+            return this.overlay;
         }
     }
 
