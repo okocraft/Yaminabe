@@ -35,11 +35,25 @@ public class YaminabePaperConfig {
     @ConfigSerializable
     public static class Restart {
 
+        @Comment("Default countdown duration in seconds used by manual restart and shutdown commands.")
+        private long defaultCountdownSeconds = 60;
+
+        @Comment("Time zone used by restart commands. Leave empty to use the system default time zone.")
+        private String timeZone = "";
+
         @Comment("Actions performed before a restart.")
         private BeforeShutdown beforeRestart = new BeforeShutdown();
 
         @Comment("Actions performed before a shutdown.")
         private BeforeShutdown beforeShutdown = new BeforeShutdown();
+
+        public long defaultCountdownSeconds() {
+            return this.defaultCountdownSeconds;
+        }
+
+        public String timeZone() {
+            return this.timeZone;
+        }
 
         public BeforeShutdown beforeRestart() {
             return this.beforeRestart;
