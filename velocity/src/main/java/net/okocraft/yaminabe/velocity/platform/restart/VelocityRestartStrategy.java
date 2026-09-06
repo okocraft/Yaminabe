@@ -1,7 +1,6 @@
 package net.okocraft.yaminabe.velocity.platform.restart;
 
 import net.okocraft.yaminabe.velocity.config.VelocityRestartSettings;
-import net.okocraft.yaminabe.velocity.config.YaminabeVelocityConfig;
 import org.jetbrains.annotations.NotNullByDefault;
 
 import java.io.IOException;
