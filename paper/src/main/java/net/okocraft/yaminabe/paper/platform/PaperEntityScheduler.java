@@ -21,4 +21,14 @@ class PaperEntityScheduler implements EntityScheduler {
 
         return entity.getScheduler().execute(this.plugin, task, null, 1);
     }
+
+    @Override
+    public boolean execute(@NotNull Entity entity, @NotNull Runnable task, @NotNull Runnable retired) {
+        if (this.plugin.getServer().isOwnedByCurrentRegion(entity)) {
+            task.run();
+            return true;
+        }
+
+        return entity.getScheduler().execute(this.plugin, task, retired, 1);
+    }
 }
