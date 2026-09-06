@@ -48,7 +48,7 @@ public final class ShutdownExecutor {
 
         stage = stage.handle((ignored, failure) -> null);
         if (kickReason != null) {
-            stage = stage.thenRun(() -> this.kickBestEffort(kickReason));
+            stage = stage.thenCompose(ignored -> this.kickBestEffort(kickReason));
         }
 
         return stage.thenRun(() -> {
@@ -76,11 +76,18 @@ public final class ShutdownExecutor {
         }
     }
 
-    private void kickBestEffort(Component reason) {
+    private CompletionStage<Void> kickBestEffort(Component reason) {
         try {
-            this.controller.kickAll(reason);
+            return Objects.requireNonNull(this.controller.kickAll(reason))
+                .handle((ignored, failure) -> {
+                    if (failure != null) {
+                        log().warn("Failed to kick all players before shutdown", failure);
+                    }
+                    return null;
+                });
         } catch (RuntimeException exception) {
             log().warn("Failed to kick all players before shutdown", exception);
+            return CompletableFuture.completedFuture(null);
         }
     }
 }

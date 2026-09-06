@@ -6,6 +6,7 @@ import net.okocraft.yaminabe.common.restart.execution.ServerController;
 import org.jetbrains.annotations.NotNullByDefault;
 
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
@@ -31,7 +32,7 @@ public final class VelocityServerController implements ServerController {
     }
 
     @Override
-    public void kickAll(Component reason) {
+    public CompletionStage<Void> kickAll(Component reason) {
         for (var player : this.proxy.getAllPlayers()) {
             try {
                 player.disconnect(reason);
@@ -39,6 +40,7 @@ public final class VelocityServerController implements ServerController {
                 log().warn("Failed to disconnect player {} before Velocity shutdown", player.getUsername(), exception);
             }
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override

@@ -61,6 +61,33 @@ class PaperEntitySchedulerTest {
     }
 
     @Test
+    void testRetiredCallbackIsHandedOverOnAnotherThread() {
+        Mockito.when(this.server.isOwnedByCurrentRegion(this.entity)).thenReturn(false);
+        Mockito.when(this.paperScheduler.execute(
+            Mockito.same(this.plugin), Mockito.any(Runnable.class), Mockito.any(Runnable.class), Mockito.eq(1L)
+        )).thenReturn(true);
+        AtomicInteger retiredRuns = new AtomicInteger();
+
+        Assertions.assertTrue(this.scheduler.execute(
+            this.entity,
+            this.runs::incrementAndGet,
+            retiredRuns::incrementAndGet
+        ));
+
+        ArgumentCaptor<Runnable> retired = ArgumentCaptor.forClass(Runnable.class);
+        Mockito.verify(this.paperScheduler).execute(
+            Mockito.same(this.plugin),
+            Mockito.any(Runnable.class),
+            retired.capture(),
+            Mockito.eq(1L)
+        );
+        retired.getValue().run();
+
+        Assertions.assertEquals(0, this.runs.get());
+        Assertions.assertEquals(1, retiredRuns.get());
+    }
+
+    @Test
     void testRetiredEntityRejectsTask() {
         Mockito.when(this.server.isOwnedByCurrentRegion(this.entity)).thenReturn(false);
         Mockito.when(this.paperScheduler.execute(

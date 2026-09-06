@@ -10,7 +10,7 @@ public interface ServerController {
 
     CompletionStage<Boolean> dispatchConsoleCommand(String command);
 
-    void kickAll(Component reason);
+    CompletionStage<Void> kickAll(Component reason);
 
     void stop();
 
