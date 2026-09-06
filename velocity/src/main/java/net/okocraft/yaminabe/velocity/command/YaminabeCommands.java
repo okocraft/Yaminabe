@@ -36,10 +36,6 @@ public final class YaminabeCommands {
         }
     };
 
-    public static DefaultMessageDefiner getDefiner() {
-        return CommandMessages.DEFINER;
-    }
-
     public static List<DefaultMessageDefiner> getDefiners() {
         return List.of(
             CommandMessages.DEFINER,
