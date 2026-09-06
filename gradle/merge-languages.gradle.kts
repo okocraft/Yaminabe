@@ -14,8 +14,12 @@ val platformLanguageDirectory = file("src/main/languages")
 val generatedLanguageResources = layout.buildDirectory.dir("generated/language-resources")
 
 val mergeLanguageResources = tasks.register("mergeLanguageResources") {
-    inputs.dir(commonLanguageDirectory).optional()
-    inputs.dir(platformLanguageDirectory).optional()
+    if (commonLanguageDirectory.isDirectory) {
+        inputs.dir(commonLanguageDirectory)
+    }
+    if (platformLanguageDirectory.isDirectory) {
+        inputs.dir(platformLanguageDirectory)
+    }
     outputs.dir(generatedLanguageResources)
 
     doLast {
@@ -72,7 +76,9 @@ val mergeLanguageResources = tasks.register("mergeLanguageResources") {
     }
 }
 
-tasks.named<ProcessResources>("processResources") {
-    dependsOn(mergeLanguageResources)
-    from(generatedLanguageResources)
+tasks.withType<ProcessResources>().configureEach {
+    if (name == "processResources") {
+        dependsOn(mergeLanguageResources)
+        from(generatedLanguageResources)
+    }
 }
