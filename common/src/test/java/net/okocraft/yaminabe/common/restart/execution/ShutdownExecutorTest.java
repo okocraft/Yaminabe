@@ -42,6 +42,19 @@ class ShutdownExecutorTest {
     }
 
     @Test
+    void testExecutionCanSkipPlayerKick() {
+        TestController controller = new TestController();
+        controller.commandResults.add(CompletableFuture.completedFuture(true));
+
+        new ShutdownExecutor(controller).execute(
+            ShutdownType.STOP,
+            List.of("save")
+        ).toCompletableFuture().join();
+
+        Assertions.assertEquals(List.of("command:save", "stop"), controller.events);
+    }
+
+    @Test
     void testCommandAndKickFailuresDoNotPreventStop() {
         TestController controller = new TestController();
         CompletableFuture<Boolean> failed = new CompletableFuture<>();

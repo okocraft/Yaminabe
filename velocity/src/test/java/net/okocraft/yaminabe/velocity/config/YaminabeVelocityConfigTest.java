@@ -41,22 +41,50 @@ class YaminabeVelocityConfigTest {
         var holder = new YaminabeVelocityConfig.Holder(dir);
         holder.reload();
 
-        Assertions.assertEquals(YaminabeVelocityConfig.RestartMode.SUPERVISOR, holder.get().restart().mode());
-        Assertions.assertTrue(holder.get().restart().command().isEmpty());
+        var restart = holder.get().restart();
+        Assertions.assertEquals(YaminabeVelocityConfig.RestartMode.SUPERVISOR, restart.mode());
+        Assertions.assertTrue(restart.command().isEmpty());
+        Assertions.assertEquals(60, restart.defaultCountdownSeconds());
+        Assertions.assertEquals("", restart.timeZone());
+        Assertions.assertTrue(restart.beforeRestart().commands().isEmpty());
+        Assertions.assertTrue(restart.beforeRestart().kickPlayers());
+        Assertions.assertTrue(restart.beforeShutdown().commands().isEmpty());
+        Assertions.assertTrue(restart.beforeShutdown().kickPlayers());
     }
 
     @Test
-    void testReloadReadsCommandRestartSettings(@TempDir Path dir) throws Exception {
-        Files.writeString(
-            dir.resolve("config.yml"),
-            "restart:\n  mode: COMMAND\n  command:\n    - sh\n    - start.sh\n    - --port\n    - '25577'\n"
-        );
+    void testReloadReadsRestartSettings(@TempDir Path dir) throws Exception {
+        Files.writeString(dir.resolve("config.yml"), """
+            restart:
+              mode: COMMAND
+              command:
+                - java
+                - -jar
+                - velocity.jar
+              default-countdown-seconds: 30
+              time-zone: Asia/Tokyo
+              before-restart:
+                commands:
+                  - alert restarting
+                kick-players: false
+              before-shutdown:
+                commands:
+                  - alert stopping
+                kick-players: true
+            """);
 
         var holder = new YaminabeVelocityConfig.Holder(dir);
         holder.reload();
 
-        Assertions.assertEquals(YaminabeVelocityConfig.RestartMode.COMMAND, holder.get().restart().mode());
-        Assertions.assertEquals(List.of("sh", "start.sh", "--port", "25577"), holder.get().restart().command());
+        var restart = holder.get().restart();
+        Assertions.assertEquals(YaminabeVelocityConfig.RestartMode.COMMAND, restart.mode());
+        Assertions.assertEquals(List.of("java", "-jar", "velocity.jar"), restart.command());
+        Assertions.assertEquals(30, restart.defaultCountdownSeconds());
+        Assertions.assertEquals("Asia/Tokyo", restart.timeZone());
+        Assertions.assertEquals(List.of("alert restarting"), restart.beforeRestart().commands());
+        Assertions.assertFalse(restart.beforeRestart().kickPlayers());
+        Assertions.assertEquals(List.of("alert stopping"), restart.beforeShutdown().commands());
+        Assertions.assertTrue(restart.beforeShutdown().kickPlayers());
     }
 
     @Test
