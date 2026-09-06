@@ -61,6 +61,25 @@ class PaperRestartCountdownAudienceTest {
     }
 
     @Test
+    void testBossBarHideDuringDisableDoesNotUsePluginScheduler() {
+        Fixture fixture = fixture();
+        Player player = Mockito.mock(Player.class);
+        Mockito.doReturn(List.of(player)).when(fixture.server).getOnlinePlayers();
+        Mockito.when(fixture.plugin.isEnabled()).thenReturn(false);
+        BossBar bossBar = bossBar();
+        PaperRestartCountdownAudience audience = new PaperRestartCountdownAudience(
+            fixture.plugin,
+            fixture.entityScheduler
+        );
+
+        audience.hideBossBar(bossBar);
+
+        Mockito.verify(player).hideBossBar(bossBar);
+        Assertions.assertTrue(fixture.globalTasks.isEmpty());
+        Assertions.assertTrue(fixture.entityTasks.isEmpty());
+    }
+
+    @Test
     void testMessagePresentationUsesEntityScheduler() {
         Fixture fixture = fixture();
         Player player = Mockito.mock(Player.class);
@@ -95,6 +114,7 @@ class PaperRestartCountdownAudienceTest {
         List<Runnable> globalTasks = new ArrayList<>();
         List<Runnable> entityTasks = new ArrayList<>();
         Mockito.when(plugin.getServer()).thenReturn(server);
+        Mockito.when(plugin.isEnabled()).thenReturn(true);
         Mockito.when(server.getGlobalRegionScheduler()).thenReturn(globalScheduler);
         Mockito.doAnswer(invocation -> {
             globalTasks.add(invocation.getArgument(1));
