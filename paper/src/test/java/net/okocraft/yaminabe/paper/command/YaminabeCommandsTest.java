@@ -8,6 +8,7 @@ import net.okocraft.yaminabe.common.restart.ShutdownType;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandMessages;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandPermissions;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandSettings;
+import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownMessages;
 import net.okocraft.yaminabe.common.restart.execution.RestartExecutionMessages;
 import net.okocraft.yaminabe.paper.testsupport.CommandTester;
 import net.okocraft.yaminabe.paper.testsupport.TestSources;
@@ -68,7 +69,8 @@ class YaminabeCommandsTest {
         Assertions.assertTrue(YaminabeCommands.getDefiners().containsAll(List.of(
             CommandMessages.DEFINER,
             RestartCommandMessages.DEFINER,
-            RestartExecutionMessages.DEFINER
+            RestartExecutionMessages.DEFINER,
+            RestartCountdownMessages.DEFINER
         )));
     }
 
