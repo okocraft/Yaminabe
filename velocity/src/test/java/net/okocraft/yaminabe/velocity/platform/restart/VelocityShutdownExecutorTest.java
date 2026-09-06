@@ -87,8 +87,9 @@ class VelocityShutdownExecutorTest {
         }
 
         @Override
-        public void kickAll(Component reason) {
+        public CompletionStage<Void> kickAll(Component reason) {
             this.events.add("kick");
+            return CompletableFuture.completedFuture(null);
         }
 
         @Override
