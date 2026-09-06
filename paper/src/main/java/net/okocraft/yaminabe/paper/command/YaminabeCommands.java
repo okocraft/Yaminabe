@@ -12,6 +12,7 @@ import net.okocraft.yaminabe.common.restart.command.RestartCommandMessages;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandSettings;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandSource;
 import net.okocraft.yaminabe.common.restart.command.RestartNowCommand;
+import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownMessages;
 import net.okocraft.yaminabe.common.restart.execution.RestartExecutionMessages;
 import net.okocraft.yaminabe.paper.platform.EntityScheduler;
 import net.okocraft.yaminabe.paper.platform.RegionScheduler;
@@ -40,7 +41,8 @@ public final class YaminabeCommands {
         return List.of(
             CommandMessages.DEFINER,
             RestartCommandMessages.DEFINER,
-            RestartExecutionMessages.DEFINER
+            RestartExecutionMessages.DEFINER,
+            RestartCountdownMessages.DEFINER
         );
     }
 
@@ -67,6 +69,8 @@ public final class YaminabeCommands {
             createAutoRestartCommand(restartService, Clock.systemUTC(), restartSettings),
             List.of("are")
         );
+        // Folia disables the server's native /restart command. Plain Paper keeps its built-in command,
+        // so Yaminabe only claims this top-level label when running on Folia.
         if (folia) {
             commands.register(createRestartCommand(restartService, Clock.systemUTC(), restartSettings));
         }
