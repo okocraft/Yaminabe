@@ -24,7 +24,7 @@ public final class RestartCountdownPresenter implements AutoCloseable {
 
     private final Scheduler scheduler;
     private final Clock clock;
-    private final AudienceProvider audienceProvider;
+    private final RestartCountdownAudience audience;
     private final Supplier<RestartCountdownSettings> settingsSupplier;
     private final Object stateLock = new Object();
     private @Nullable ActiveCountdown active;
@@ -35,9 +35,18 @@ public final class RestartCountdownPresenter implements AutoCloseable {
         AudienceProvider audienceProvider,
         Supplier<RestartCountdownSettings> settingsSupplier
     ) {
+        this(scheduler, clock, forwarding(audienceProvider), settingsSupplier);
+    }
+
+    public RestartCountdownPresenter(
+        Scheduler scheduler,
+        Clock clock,
+        RestartCountdownAudience audience,
+        Supplier<RestartCountdownSettings> settingsSupplier
+    ) {
         this.scheduler = Objects.requireNonNull(scheduler);
         this.clock = Objects.requireNonNull(clock);
-        this.audienceProvider = Objects.requireNonNull(audienceProvider);
+        this.audience = Objects.requireNonNull(audience);
         this.settingsSupplier = Objects.requireNonNull(settingsSupplier);
     }
 
@@ -154,9 +163,7 @@ public final class RestartCountdownPresenter implements AutoCloseable {
                     .progress(progress(remaining, countdown.totalSeconds));
                 if (!countdown.bossBarShown) {
                     countdown.bossBarShown = true;
-                    for (Audience audience : this.audienceProvider.audiences()) {
-                        audience.showBossBar(countdown.bossBar);
-                    }
+                    this.audience.showBossBar(countdown.bossBar);
                 }
             }
 
@@ -166,9 +173,7 @@ public final class RestartCountdownPresenter implements AutoCloseable {
                         && threshold >= remaining
                         && countdown.broadcasted.add(threshold)) {
                         ComponentLike message = RestartCountdownMessages.countdown(countdown.reservation, threshold);
-                        for (Audience audience : this.audienceProvider.audiences()) {
-                            audience.sendMessage(message.asComponent());
-                        }
+                        this.audience.sendMessage(message.asComponent());
                     }
                 }
             }
@@ -198,10 +203,34 @@ public final class RestartCountdownPresenter implements AutoCloseable {
             task.cancel();
         }
         if (hideBossBar) {
-            for (Audience audience : this.audienceProvider.audiences()) {
-                audience.hideBossBar(countdown.bossBar);
-            }
+            this.audience.hideBossBar(countdown.bossBar);
         }
+    }
+
+    private static RestartCountdownAudience forwarding(AudienceProvider audienceProvider) {
+        Objects.requireNonNull(audienceProvider);
+        return new RestartCountdownAudience() {
+            @Override
+            public void showBossBar(BossBar bossBar) {
+                for (Audience audience : audienceProvider.audiences()) {
+                    audience.showBossBar(bossBar);
+                }
+            }
+
+            @Override
+            public void hideBossBar(BossBar bossBar) {
+                for (Audience audience : audienceProvider.audiences()) {
+                    audience.hideBossBar(bossBar);
+                }
+            }
+
+            @Override
+            public void sendMessage(net.kyori.adventure.text.Component message) {
+                for (Audience audience : audienceProvider.audiences()) {
+                    audience.sendMessage(message);
+                }
+            }
+        };
     }
 
     private static long ceilSeconds(Duration duration) {
