@@ -1,20 +1,30 @@
 package net.okocraft.yaminabe.paper.plugin;
 
 import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
+import io.papermc.paper.ServerBuildInfo;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import net.kyori.adventure.key.Key;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
+import net.okocraft.yaminabe.common.restart.RestartService;
+import net.okocraft.yaminabe.common.restart.ShutdownReservation;
+import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutor;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
+import net.okocraft.yaminabe.paper.config.PaperRestartSettings;
 import net.okocraft.yaminabe.paper.config.YaminabePaperConfig;
 import net.okocraft.yaminabe.paper.listener.EventListeners;
 import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
+import net.okocraft.yaminabe.paper.platform.restart.PaperServerController;
+import net.okocraft.yaminabe.paper.platform.restart.PaperShutdownExecutor;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +40,8 @@ public class YaminabePaperPlugin extends JavaPlugin {
     private final PaperSchedulerProvider scheduler;
     private final List<DefaultMessageDefiner> defaultMessages;
     private final YaminabePaperConfig.Holder config;
+    private volatile PaperRestartSettings restartSettings = PaperRestartSettings.from(new YaminabePaperConfig.Restart());
+    private volatile @Nullable RestartService restartService;
     private PluginStatus status;
 
     public YaminabePaperPlugin(@NotNull PluginStatus initialStatus, @NotNull List<DefaultMessageDefiner> defaultMessages) {
@@ -69,9 +81,36 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.LOADED,
             "enable",
             () -> {
+                Clock clock = Clock.systemUTC();
+                PaperShutdownExecutor shutdownExecutor = new PaperShutdownExecutor(
+                    new ShutdownExecutor(new PaperServerController(this, this.scheduler.entity())),
+                    () -> this.restartSettings
+                );
+                RestartService restartService = new RestartService(this.scheduler.async(), clock, new RestartService.Listener() {
+                    @Override
+                    public void onExecute(ShutdownReservation reservation) {
+                        shutdownExecutor.execute(reservation).whenComplete((ignored, failure) -> {
+                            if (failure != null) {
+                                log().error("Paper shutdown execution completed exceptionally", failure);
+                            }
+                        });
+                    }
+                });
+                this.restartService = restartService;
+
+                boolean folia = ServerBuildInfo.buildInfo().isBrandCompatible(Key.key("papermc", "folia"));
                 this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
                     Commands commands = event.registrar();
-                    YaminabeCommands.register(commands, this.scheduler.async(), this.scheduler.region(), this.scheduler.entity(), this::reload);
+                    YaminabeCommands.register(
+                        commands,
+                        this.scheduler.async(),
+                        this.scheduler.region(),
+                        this.scheduler.entity(),
+                        this::reload,
+                        restartService,
+                        () -> this.restartSettings.commandSettings(),
+                        folia
+                    );
                 });
                 EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
                 return PluginStatus.ENABLED;
@@ -85,6 +124,11 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.ENABLED,
             "disable",
             () -> {
+                RestartService service = this.restartService;
+                if (service != null) {
+                    service.close();
+                    this.restartService = null;
+                }
                 HandlerList.unregisterAll(this);
                 LanguageProvider.unload();
                 return PluginStatus.DISABLED;
@@ -113,6 +157,10 @@ public class YaminabePaperPlugin extends JavaPlugin {
 
     private void loadConfig() throws IOException {
         this.config.reload();
+        this.restartSettings = PaperRestartSettings.from(
+            this.config.get().restart(),
+            warning -> log().warn(warning)
+        );
 
         boolean debug = this.config.get().debug();
         logDebug(debug);
