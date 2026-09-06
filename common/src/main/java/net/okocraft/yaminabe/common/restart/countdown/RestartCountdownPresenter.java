@@ -12,7 +12,9 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -168,7 +170,7 @@ public final class RestartCountdownPresenter implements AutoCloseable {
             }
 
             if (remaining <= countdown.lastRemainingSeconds) {
-                for (long threshold : countdown.settings.broadcastAtSeconds()) {
+                for (long threshold : countdown.broadcastThresholds) {
                     if (threshold <= countdown.lastRemainingSeconds
                         && threshold >= remaining
                         && countdown.broadcasted.add(threshold)) {
@@ -253,6 +255,7 @@ public final class RestartCountdownPresenter implements AutoCloseable {
     private static final class ActiveCountdown {
         private final ShutdownReservation reservation;
         private final RestartCountdownSettings settings;
+        private final List<Long> broadcastThresholds;
         private final long totalSeconds;
         private final @Nullable BossBar bossBar;
         private final Set<Long> broadcasted = new HashSet<>();
@@ -269,6 +272,9 @@ public final class RestartCountdownPresenter implements AutoCloseable {
         ) {
             this.reservation = reservation;
             this.settings = settings;
+            this.broadcastThresholds = settings.broadcastAtSeconds().stream()
+                .sorted(Comparator.reverseOrder())
+                .toList();
             this.totalSeconds = totalSeconds;
             this.lastRemainingSeconds = initialRemainingSeconds;
             this.bossBar = bossBar;
