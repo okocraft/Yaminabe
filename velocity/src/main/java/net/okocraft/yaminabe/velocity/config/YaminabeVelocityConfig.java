@@ -21,7 +21,7 @@ public class YaminabeVelocityConfig {
     @Comment("More output to the console.")
     private boolean debug = false;
 
-    @Comment("Velocity-specific restart settings.")
+    @Comment("Restart and shutdown settings.")
     private Restart restart = new Restart();
 
     public boolean debug() {
@@ -41,12 +41,58 @@ public class YaminabeVelocityConfig {
         @Comment("ProcessBuilder argument list used when mode is COMMAND. Each YAML list entry is one process argument.")
         private List<String> command = new ArrayList<>();
 
+        @Comment("Default countdown duration in seconds used by manual restart and shutdown commands.")
+        private long defaultCountdownSeconds = 60;
+
+        @Comment("Time zone used by restart commands. Leave empty to use the system default time zone.")
+        private String timeZone = "";
+
+        @Comment("Actions performed before a restart.")
+        private BeforeShutdown beforeRestart = new BeforeShutdown();
+
+        @Comment("Actions performed before a shutdown.")
+        private BeforeShutdown beforeShutdown = new BeforeShutdown();
+
         public RestartMode mode() {
             return this.mode;
         }
 
         public List<String> command() {
             return List.copyOf(this.command);
+        }
+
+        public long defaultCountdownSeconds() {
+            return this.defaultCountdownSeconds;
+        }
+
+        public String timeZone() {
+            return this.timeZone;
+        }
+
+        public BeforeShutdown beforeRestart() {
+            return this.beforeRestart;
+        }
+
+        public BeforeShutdown beforeShutdown() {
+            return this.beforeShutdown;
+        }
+    }
+
+    @ConfigSerializable
+    public static class BeforeShutdown {
+
+        @Comment("Console commands executed sequentially before the proxy is stopped or restarted.")
+        private List<String> commands = new ArrayList<>();
+
+        @Comment("Whether all connected players are disconnected before the proxy is stopped or restarted.")
+        private boolean kickPlayers = true;
+
+        public List<String> commands() {
+            return List.copyOf(this.commands);
+        }
+
+        public boolean kickPlayers() {
+            return this.kickPlayers;
         }
     }
 
