@@ -25,6 +25,9 @@ public final class RestartCommandMessages {
     static final MessageKey.Arg1<String> STOP_CANCELLED = DEFINER
         .define(PREFIX + "stop-cancelled", "<gray>Cancelled the shutdown scheduled for <aqua><time></aqua><gray>.")
         .with(time -> Argument.string("time", time));
+    static final MessageKey.Arg1<String> AUTOMATIC_RESTART_SCHEDULED = DEFINER
+        .define(PREFIX + "automatic-restart-scheduled", "<gray>The next automatic restart is scheduled for <aqua><time></aqua><gray>.")
+        .with(time -> Argument.string("time", time));
     static final MessageKey NOTHING_TO_CANCEL = DEFINER
         .define(PREFIX + "nothing-to-cancel", "<red>There is no restart or shutdown reservation to cancel.");
     static final MessageKey.Arg1<String> INVALID_DURATION = DEFINER
