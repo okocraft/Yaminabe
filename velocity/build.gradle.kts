@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.run.velocity)
 }
 
+apply(from = rootProject.file("gradle/merge-languages.gradle.kts"))
+
 jcommon {
     setupPaperRepository()
 }
