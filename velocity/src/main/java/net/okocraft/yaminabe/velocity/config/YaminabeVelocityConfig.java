@@ -7,6 +7,8 @@ import org.spongepowered.configurate.objectmapping.meta.Comment;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -19,8 +21,38 @@ public class YaminabeVelocityConfig {
     @Comment("More output to the console.")
     private boolean debug = false;
 
+    @Comment("Velocity-specific restart settings.")
+    private Restart restart = new Restart();
+
     public boolean debug() {
         return this.debug;
+    }
+
+    public Restart restart() {
+        return this.restart;
+    }
+
+    @ConfigSerializable
+    public static class Restart {
+
+        @Comment("How Velocity is restarted: SUPERVISOR stops the proxy and relies on an external supervisor; COMMAND launches the configured command when the JVM shuts down.")
+        private RestartMode mode = RestartMode.SUPERVISOR;
+
+        @Comment("ProcessBuilder argument list used when mode is COMMAND. Each YAML list entry is one process argument.")
+        private List<String> command = new ArrayList<>();
+
+        public RestartMode mode() {
+            return this.mode;
+        }
+
+        public List<String> command() {
+            return List.copyOf(this.command);
+        }
+    }
+
+    public enum RestartMode {
+        SUPERVISOR,
+        COMMAND
     }
 
     public static class Holder {

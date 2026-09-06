@@ -7,6 +7,7 @@ import org.spongepowered.configurate.ConfigurateException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 class YaminabeVelocityConfigTest {
 
@@ -33,6 +34,29 @@ class YaminabeVelocityConfigTest {
         holder.reload();
 
         Assertions.assertTrue(holder.get().debug());
+    }
+
+    @Test
+    void testRestartDefaultsToSupervisorMode(@TempDir Path dir) throws Exception {
+        var holder = new YaminabeVelocityConfig.Holder(dir);
+        holder.reload();
+
+        Assertions.assertEquals(YaminabeVelocityConfig.RestartMode.SUPERVISOR, holder.get().restart().mode());
+        Assertions.assertTrue(holder.get().restart().command().isEmpty());
+    }
+
+    @Test
+    void testReloadReadsCommandRestartSettings(@TempDir Path dir) throws Exception {
+        Files.writeString(
+            dir.resolve("config.yml"),
+            "restart:\n  mode: COMMAND\n  command:\n    - sh\n    - start.sh\n    - --port\n    - '25577'\n"
+        );
+
+        var holder = new YaminabeVelocityConfig.Holder(dir);
+        holder.reload();
+
+        Assertions.assertEquals(YaminabeVelocityConfig.RestartMode.COMMAND, holder.get().restart().mode());
+        Assertions.assertEquals(List.of("sh", "start.sh", "--port", "25577"), holder.get().restart().command());
     }
 
     @Test
