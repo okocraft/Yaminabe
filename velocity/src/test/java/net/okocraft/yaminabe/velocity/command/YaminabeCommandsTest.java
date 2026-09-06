@@ -4,6 +4,10 @@ import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.platform.scheduler.CancellableTask;
 import net.okocraft.yaminabe.common.platform.scheduler.Scheduler;
+import net.okocraft.yaminabe.common.restart.RestartService;
+import net.okocraft.yaminabe.common.restart.ShutdownType;
+import net.okocraft.yaminabe.common.restart.command.RestartCommandPermissions;
+import net.okocraft.yaminabe.common.restart.command.RestartCommandSettings;
 import net.okocraft.yaminabe.velocity.testsupport.CommandTester;
 import net.okocraft.yaminabe.velocity.testsupport.TestSources;
 import org.jetbrains.annotations.NotNull;
@@ -12,21 +16,30 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.function.Consumer;
 
 class YaminabeCommandsTest {
 
-    private static final Scheduler IMMEDIATE_SCHEDULER = new ImmediateScheduler();
+    private static final Scheduler TEST_SCHEDULER = new TestScheduler();
     private static final YaminabeReloader NOOP_RELOADER = consumer -> {
     };
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-09-06T03:00:00Z"), ZoneOffset.UTC);
+    private static final RestartCommandSettings RESTART_SETTINGS = new RestartCommandSettings(
+        Duration.ofSeconds(60),
+        ZoneId.of("Asia/Tokyo")
+    );
 
     @Test
     void testVersionCommandIsWiredUnderYaminabeRoot() throws Exception {
         ConsoleCommandSource console = TestSources.console();
         TestSources.grant(console, "yaminabe.command", "yaminabe.command.version");
 
-        CommandTester tester = CommandTester.of(YaminabeCommands.createCommand(IMMEDIATE_SCHEDULER, NOOP_RELOADER));
+        CommandTester tester = CommandTester.of(YaminabeCommands.createCommand(TEST_SCHEDULER, NOOP_RELOADER));
 
         Assertions.assertEquals(1, tester.execute(console, "yaminabe version"));
         Mockito.verify(console).sendMessage(CommandMessages.VERSION_PRINT.apply(VersionCommand.UNKNOWN_VERSION));
@@ -38,7 +51,7 @@ class YaminabeCommandsTest {
         TestSources.grant(console, "yaminabe.command", "yaminabe.command.reload");
 
         YaminabeReloader reloader = consumer -> consumer.accept(YaminabeReloader.Notification.CONFIG_RELOADED);
-        CommandTester tester = CommandTester.of(YaminabeCommands.createCommand(IMMEDIATE_SCHEDULER, reloader));
+        CommandTester tester = CommandTester.of(YaminabeCommands.createCommand(TEST_SCHEDULER, reloader));
 
         Assertions.assertEquals(1, tester.execute(console, "yaminabe reload"));
 
@@ -48,7 +61,52 @@ class YaminabeCommandsTest {
         order.verifyNoMoreInteractions();
     }
 
-    private static final class ImmediateScheduler implements Scheduler {
+    @Test
+    void testAutoRestartCommandUsesCommonCommandTree() throws Exception {
+        ConsoleCommandSource console = TestSources.console();
+        TestSources.grant(console, RestartCommandPermissions.RESTART);
+        RestartService service = restartService();
+        CommandTester tester = CommandTester.of(YaminabeCommands.createAutoRestartCommand(
+            service,
+            CLOCK,
+            () -> RESTART_SETTINGS
+        ));
+
+        Assertions.assertEquals(1, tester.execute(console, "autorestart restart now"));
+        Assertions.assertEquals(ShutdownType.RESTART, service.current().orElseThrow().reservation().type());
+    }
+
+    @Test
+    void testVelocityRestartCommandUsesImmediateRestartTree() throws Exception {
+        ConsoleCommandSource console = TestSources.console();
+        TestSources.grant(console, RestartCommandPermissions.RESTART);
+        RestartService service = restartService();
+        CommandTester tester = CommandTester.of(YaminabeCommands.createVelocityRestartCommand(
+            service,
+            CLOCK,
+            () -> RESTART_SETTINGS
+        ));
+
+        Assertions.assertEquals(1, tester.execute(console, "vrestart reason maintenance"));
+        var reservation = service.current().orElseThrow().reservation();
+        Assertions.assertEquals(ShutdownType.RESTART, reservation.type());
+        Assertions.assertEquals("maintenance", reservation.reason());
+    }
+
+    @Test
+    void testRestartDefinersAreExposedForLanguageLoading() {
+        Assertions.assertEquals(3, YaminabeCommands.getDefiners().size());
+    }
+
+    private static RestartService restartService() {
+        return new RestartService(TEST_SCHEDULER, CLOCK, new RestartService.Listener() {
+        });
+    }
+
+    private static final class TestScheduler implements Scheduler {
+
+        private static final CancellableTask NOOP_TASK = () -> {
+        };
 
         @Override
         public void runNow(@NotNull Runnable task) {
@@ -57,12 +115,12 @@ class YaminabeCommandsTest {
 
         @Override
         public @NotNull CancellableTask runDelayed(@NotNull Runnable task, @NotNull Duration delay) {
-            throw new UnsupportedOperationException();
+            return NOOP_TASK;
         }
 
         @Override
         public @NotNull CancellableTask runAtFixedRate(@NotNull Consumer<CancellableTask> task, @NotNull Duration interval) {
-            throw new UnsupportedOperationException();
+            return NOOP_TASK;
         }
     }
 }
