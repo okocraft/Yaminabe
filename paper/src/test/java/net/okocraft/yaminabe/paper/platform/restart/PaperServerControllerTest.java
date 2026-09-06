@@ -38,16 +38,18 @@ class PaperServerControllerTest {
         Mockito.doReturn(List.of(first, second)).when(fixture.server).getOnlinePlayers();
         AtomicReference<Runnable> firstTask = new AtomicReference<>();
         AtomicReference<Runnable> secondTask = new AtomicReference<>();
-        Mockito.when(fixture.entityScheduler.execute(Mockito.eq(first), Mockito.any(Runnable.class)))
-            .thenAnswer(invocation -> {
-                firstTask.set(invocation.getArgument(1));
-                return true;
-            });
-        Mockito.when(fixture.entityScheduler.execute(Mockito.eq(second), Mockito.any(Runnable.class)))
-            .thenAnswer(invocation -> {
-                secondTask.set(invocation.getArgument(1));
-                return true;
-            });
+        Mockito.when(fixture.entityScheduler.execute(
+            Mockito.eq(first), Mockito.any(Runnable.class), Mockito.any(Runnable.class)
+        )).thenAnswer(invocation -> {
+            firstTask.set(invocation.getArgument(1));
+            return true;
+        });
+        Mockito.when(fixture.entityScheduler.execute(
+            Mockito.eq(second), Mockito.any(Runnable.class), Mockito.any(Runnable.class)
+        )).thenAnswer(invocation -> {
+            secondTask.set(invocation.getArgument(1));
+            return true;
+        });
         Component reason = Component.text("maintenance");
 
         var controller = new PaperServerController(fixture.plugin, fixture.entityScheduler);
@@ -67,12 +69,62 @@ class PaperServerControllerTest {
         Fixture fixture = fixture(true);
         Player player = Mockito.mock(Player.class);
         Mockito.doReturn(List.of(player)).when(fixture.server).getOnlinePlayers();
-        Mockito.when(fixture.entityScheduler.execute(Mockito.eq(player), Mockito.any(Runnable.class))).thenReturn(false);
+        Mockito.when(fixture.entityScheduler.execute(
+            Mockito.eq(player), Mockito.any(Runnable.class), Mockito.any(Runnable.class)
+        )).thenReturn(false);
 
         var controller = new PaperServerController(fixture.plugin, fixture.entityScheduler);
 
         Assertions.assertDoesNotThrow(() -> controller.kickAll(Component.empty()).toCompletableFuture().join());
         Mockito.verify(player, Mockito.never()).kick(Mockito.any(Component.class));
+    }
+
+    @Test
+    void testPlayerRetiringAfterSchedulingDoesNotBlockKickCompletion() {
+        Fixture fixture = fixture(true);
+        Player player = Mockito.mock(Player.class);
+        Mockito.doReturn(List.of(player)).when(fixture.server).getOnlinePlayers();
+        AtomicReference<Runnable> retiredTask = new AtomicReference<>();
+        Mockito.when(fixture.entityScheduler.execute(
+            Mockito.eq(player), Mockito.any(Runnable.class), Mockito.any(Runnable.class)
+        )).thenAnswer(invocation -> {
+            retiredTask.set(invocation.getArgument(2));
+            return true;
+        });
+
+        var controller = new PaperServerController(fixture.plugin, fixture.entityScheduler);
+        var result = controller.kickAll(Component.empty()).toCompletableFuture();
+
+        Assertions.assertFalse(result.isDone());
+        retiredTask.get().run();
+        Assertions.assertTrue(result.isDone());
+        Mockito.verify(player, Mockito.never()).kick(Mockito.any(Component.class));
+    }
+
+    @Test
+    void testKickAllUsesSnapshotOfOnlinePlayers() {
+        Fixture fixture = fixture(true);
+        Player first = Mockito.mock(Player.class);
+        Player second = Mockito.mock(Player.class);
+        List<Player> onlinePlayers = new ArrayList<>(List.of(first, second));
+        Mockito.doReturn(onlinePlayers).when(fixture.server).getOnlinePlayers();
+        Mockito.when(fixture.entityScheduler.execute(
+            Mockito.any(Player.class), Mockito.any(Runnable.class), Mockito.any(Runnable.class)
+        )).thenAnswer(invocation -> {
+            ((Runnable) invocation.getArgument(1)).run();
+            return true;
+        });
+        Component reason = Component.text("maintenance");
+        Mockito.doAnswer(invocation -> {
+            onlinePlayers.remove(first);
+            return null;
+        }).when(first).kick(reason);
+
+        var controller = new PaperServerController(fixture.plugin, fixture.entityScheduler);
+
+        Assertions.assertDoesNotThrow(() -> controller.kickAll(reason).toCompletableFuture().join());
+        Mockito.verify(first).kick(reason);
+        Mockito.verify(second).kick(reason);
     }
 
     @Test
