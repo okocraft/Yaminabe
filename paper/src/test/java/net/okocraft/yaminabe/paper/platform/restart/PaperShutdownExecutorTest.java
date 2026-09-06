@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.okocraft.yaminabe.common.restart.ReservationSource;
 import net.okocraft.yaminabe.common.restart.ShutdownReservation;
 import net.okocraft.yaminabe.common.restart.ShutdownType;
+import net.okocraft.yaminabe.common.restart.command.RestartCommandSettings;
 import net.okocraft.yaminabe.common.restart.execution.ServerController;
 import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutor;
 import net.okocraft.yaminabe.paper.config.PaperRestartSettings;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -60,6 +62,7 @@ class PaperShutdownExecutorTest {
 
     private static PaperRestartSettings settings() {
         return new PaperRestartSettings(
+            new RestartCommandSettings(Duration.ZERO, ZoneOffset.UTC),
             new PaperRestartSettings.ShutdownSettings(List.of("restart-command"), true),
             new PaperRestartSettings.ShutdownSettings(List.of("stop-command"), false)
         );
