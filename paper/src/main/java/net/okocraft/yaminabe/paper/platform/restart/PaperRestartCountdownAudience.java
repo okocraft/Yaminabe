@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNullByDefault;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -44,6 +45,10 @@ public final class PaperRestartCountdownAudience implements RestartCountdownAudi
     public void hideBossBar(BossBar bossBar) {
         Objects.requireNonNull(bossBar);
         this.activeBossBar.compareAndSet(bossBar, null);
+        if (!this.plugin.isEnabled()) {
+            this.hideBossBarDuringDisable(bossBar);
+            return;
+        }
         this.forEachPlayer(player -> player.hideBossBar(bossBar));
     }
 
@@ -51,6 +56,24 @@ public final class PaperRestartCountdownAudience implements RestartCountdownAudi
     public void sendMessage(Component message) {
         Objects.requireNonNull(message);
         this.forEachPlayer(player -> player.sendMessage(message));
+    }
+
+    private void hideBossBarDuringDisable(BossBar bossBar) {
+        List<Player> players;
+        try {
+            players = List.copyOf(this.server.getOnlinePlayers());
+        } catch (RuntimeException exception) {
+            log().warn("Failed to collect players while removing the restart countdown BossBar during plugin disable", exception);
+            return;
+        }
+
+        for (Player player : players) {
+            try {
+                player.hideBossBar(bossBar);
+            } catch (RuntimeException exception) {
+                log().warn("Failed to remove the restart countdown BossBar from player {} during plugin disable", player.getName(), exception);
+            }
+        }
     }
 
     private void forEachPlayer(Consumer<Player> action) {
