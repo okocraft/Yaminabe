@@ -3,6 +3,7 @@ package net.okocraft.yaminabe.common.restart.execution;
 import net.kyori.adventure.text.Component;
 import net.okocraft.yaminabe.common.restart.ShutdownType;
 import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -20,29 +21,42 @@ public final class ShutdownExecutor {
         this.controller = Objects.requireNonNull(controller);
     }
 
+    public CompletionStage<Void> execute(ShutdownType type, List<String> commands) {
+        return this.execute(type, commands, null);
+    }
+
     public CompletionStage<Void> execute(
         ShutdownType type,
         List<String> commands,
         Component kickReason
     ) {
+        return this.execute(type, commands, (Component) Objects.requireNonNull(kickReason));
+    }
+
+    private CompletionStage<Void> execute(
+        ShutdownType type,
+        List<String> commands,
+        @Nullable Component kickReason
+    ) {
         Objects.requireNonNull(type);
         List<String> commandList = List.copyOf(commands);
-        Objects.requireNonNull(kickReason);
 
         CompletionStage<Void> stage = CompletableFuture.completedFuture(null);
         for (String command : commandList) {
             stage = stage.thenCompose(ignored -> this.dispatchBestEffort(command));
         }
 
-        return stage
-            .handle((ignored, failure) -> null)
-            .thenRun(() -> this.kickBestEffort(kickReason))
-            .thenRun(() -> {
-                switch (type) {
-                    case RESTART -> this.controller.restart();
-                    case STOP -> this.controller.stop();
-                }
-            });
+        stage = stage.handle((ignored, failure) -> null);
+        if (kickReason != null) {
+            stage = stage.thenRun(() -> this.kickBestEffort(kickReason));
+        }
+
+        return stage.thenRun(() -> {
+            switch (type) {
+                case RESTART -> this.controller.restart();
+                case STOP -> this.controller.stop();
+            }
+        });
     }
 
     private CompletionStage<Void> dispatchBestEffort(String command) {
