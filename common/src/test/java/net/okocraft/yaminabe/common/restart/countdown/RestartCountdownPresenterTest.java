@@ -9,6 +9,7 @@ import net.okocraft.yaminabe.common.restart.ShutdownReservation;
 import net.okocraft.yaminabe.common.restart.ShutdownType;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.Mockito;
 
 import java.time.Clock;
@@ -61,6 +62,40 @@ class RestartCountdownPresenterTest {
         clock.set(NOW.plusSeconds(7));
         scheduler.task.run();
         Mockito.verifyNoMoreInteractions(audience);
+    }
+
+    @Test
+    void testCrossedThresholdsAreBroadcastFromLargestToSmallest() {
+        MutableClock clock = new MutableClock(NOW);
+        TestScheduler scheduler = new TestScheduler();
+        Audience audience = Mockito.mock(Audience.class);
+        RestartCountdownPresenter presenter = new RestartCountdownPresenter(
+            scheduler,
+            clock,
+            () -> List.of(audience),
+            () -> new RestartCountdownSettings(
+                false,
+                BossBar.Color.PURPLE,
+                BossBar.Overlay.PROGRESS,
+                Set.of(3L, 10L, 5L)
+            )
+        );
+        ShutdownReservation reservation = ShutdownReservation.withFullCountdown(
+            NOW,
+            NOW.plusSeconds(20),
+            ShutdownType.RESTART,
+            ReservationSource.MANUAL,
+            null
+        );
+
+        presenter.start(reservation);
+        clock.set(NOW.plusSeconds(18)); // 2 seconds remaining; crosses 10, 5, and 3
+        scheduler.task.run();
+
+        InOrder inOrder = Mockito.inOrder(audience);
+        inOrder.verify(audience).sendMessage(RestartCountdownMessages.countdown(reservation, 10).asComponent());
+        inOrder.verify(audience).sendMessage(RestartCountdownMessages.countdown(reservation, 5).asComponent());
+        inOrder.verify(audience).sendMessage(RestartCountdownMessages.countdown(reservation, 3).asComponent());
     }
 
     private static final class TestScheduler implements Scheduler {
