@@ -175,15 +175,18 @@ class AutoRestartCommandTest {
     }
 
     @Test
-    void testMalformedAtArgumentsDoNotSchedule() throws Exception {
+    void testMalformedAtArgumentsDoNotSchedule() {
         Fixture fixture = fixture();
         fixture.source.permissions.add(RestartCommandPermissions.RESTART);
 
-        Assertions.assertEquals(0, fixture.dispatcher.execute("autorestart restart at 18:00 countdown", fixture.source));
+        Assertions.assertThrows(
+            CommandSyntaxException.class,
+            () -> fixture.dispatcher.execute("autorestart restart at 18:00 countdown", fixture.source)
+        );
 
         Assertions.assertTrue(fixture.service.current().isEmpty());
         Assertions.assertTrue(fixture.scheduler.tasks.isEmpty());
-        Assertions.assertEquals(1, fixture.source.messages.size());
+        Assertions.assertTrue(fixture.source.messages.isEmpty());
     }
 
     @Test
