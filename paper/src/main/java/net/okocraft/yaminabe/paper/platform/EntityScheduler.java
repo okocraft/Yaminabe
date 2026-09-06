@@ -20,4 +20,20 @@ public interface EntityScheduler {
      * @return {@code true} if the task ran or was scheduled, or {@code false} if the entity was already retired
      */
     boolean execute(@NotNull Entity entity, @NotNull Runnable task);
+
+    /**
+     * Runs the given task on the thread that owns the given entity and invokes {@code retired} if the entity retires
+     * after the task has been accepted but before it can run.
+     * <p>
+     * Implementations that cannot observe retirement after scheduling may use the default behavior. Callers must still
+     * handle a {@code false} return value, which means the entity was already retired when the task was submitted.
+     *
+     * @param entity  the entity the task touches
+     * @param task    the task to run
+     * @param retired the callback to run if an accepted task cannot run because the entity retires
+     * @return {@code true} if the task ran or was scheduled, or {@code false} if the entity was already retired
+     */
+    default boolean execute(@NotNull Entity entity, @NotNull Runnable task, @NotNull Runnable retired) {
+        return this.execute(entity, task);
+    }
 }
