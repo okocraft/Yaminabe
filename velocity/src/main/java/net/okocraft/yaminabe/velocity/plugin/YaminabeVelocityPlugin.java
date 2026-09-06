@@ -11,20 +11,17 @@ import net.okocraft.yaminabe.common.YaminabeLogger;
 import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
 import net.okocraft.yaminabe.common.restart.AutomaticRestartManager;
-import net.okocraft.yaminabe.common.restart.RestartSchedule;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.ShutdownReservation;
-import net.okocraft.yaminabe.common.restart.ShutdownType;
-import net.okocraft.yaminabe.common.restart.command.RestartCommandSettings;
 import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownPresenter;
-import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownSettings;
-import net.okocraft.yaminabe.common.restart.execution.RestartExecutionMessages;
 import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutor;
 import net.okocraft.yaminabe.velocity.command.YaminabeCommands;
+import net.okocraft.yaminabe.velocity.config.VelocityRestartSettings;
 import net.okocraft.yaminabe.velocity.config.YaminabeVelocityConfig;
 import net.okocraft.yaminabe.velocity.platform.VelocityScheduler;
 import net.okocraft.yaminabe.velocity.platform.restart.VelocityRestartStrategy;
 import net.okocraft.yaminabe.velocity.platform.restart.VelocityServerController;
+import net.okocraft.yaminabe.velocity.platform.restart.VelocityShutdownExecutor;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.helpers.SubstituteLogger;
@@ -32,21 +29,7 @@ import org.slf4j.helpers.SubstituteLogger;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
-import java.time.DateTimeException;
-import java.time.Duration;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.DateTimeParseException;
-import java.time.format.ResolverStyle;
-import java.time.format.SignStyle;
-import java.time.temporal.ChronoField;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import static net.okocraft.yaminabe.common.YaminabeLogger.log;
@@ -54,19 +37,13 @@ import static net.okocraft.yaminabe.common.YaminabeLogger.logDebug;
 
 public final class YaminabeVelocityPlugin {
 
-    private static final DateTimeFormatter SCHEDULED_TIME_FORMATTER = new DateTimeFormatterBuilder()
-        .appendValue(ChronoField.HOUR_OF_DAY, 1, 2, SignStyle.NOT_NEGATIVE)
-        .appendLiteral(':')
-        .appendValue(ChronoField.MINUTE_OF_HOUR, 1, 2, SignStyle.NOT_NEGATIVE)
-        .toFormatter(Locale.ROOT)
-        .withResolverStyle(ResolverStyle.STRICT);
-
     private final ProxyServer proxy;
     private final Path dataDirectory;
     private final YaminabeVelocityConfig.Holder config;
-    private @Nullable RestartService restartService;
-    private @Nullable AutomaticRestartManager automaticRestartManager;
-    private @Nullable RestartCountdownPresenter restartCountdownPresenter;
+    private volatile @Nullable VelocityRestartSettings restartSettings;
+    private volatile @Nullable RestartService restartService;
+    private volatile @Nullable AutomaticRestartManager automaticRestartManager;
+    private volatile @Nullable RestartCountdownPresenter restartCountdownPresenter;
 
     @Inject
     public YaminabeVelocityPlugin(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
@@ -93,15 +70,18 @@ public final class YaminabeVelocityPlugin {
 
         Clock clock = Clock.systemUTC();
         var scheduler = new VelocityScheduler(this.proxy.getScheduler(), this);
-        var shutdownExecutor = new ShutdownExecutor(new VelocityServerController(
-            this.proxy,
-            () -> VelocityRestartStrategy.from(this.config.get().restart())
-        ));
+        var shutdownExecutor = new VelocityShutdownExecutor(
+            new ShutdownExecutor(new VelocityServerController(
+                this.proxy,
+                () -> VelocityRestartStrategy.from(this.restartSettings())
+            )),
+            this::restartSettings
+        );
         RestartCountdownPresenter countdownPresenter = new RestartCountdownPresenter(
             scheduler,
             clock,
             this.proxy::getAllPlayers,
-            this::restartCountdownSettings
+            () -> this.restartSettings().countdownSettings()
         );
         this.restartCountdownPresenter = countdownPresenter;
 
@@ -131,7 +111,7 @@ public final class YaminabeVelocityPlugin {
         AutomaticRestartManager automaticRestartManager = new AutomaticRestartManager(
             restartService,
             clock,
-            this::automaticRestartSettings
+            () -> this.restartSettings().automaticSettings()
         );
         this.automaticRestartManager = automaticRestartManager;
         automaticRestartManager.refresh();
@@ -142,7 +122,7 @@ public final class YaminabeVelocityPlugin {
             scheduler,
             this::reload,
             restartService,
-            this::restartCommandSettings
+            () -> this.restartSettings().commandSettings()
         );
     }
 
@@ -173,6 +153,7 @@ public final class YaminabeVelocityPlugin {
             service.close();
             this.restartService = null;
         }
+        this.restartSettings = null;
         LanguageProvider.unload();
     }
 
@@ -199,100 +180,24 @@ public final class YaminabeVelocityPlugin {
         }
     }
 
-    private void executeShutdown(ShutdownExecutor executor, ShutdownReservation reservation) {
-        YaminabeVelocityConfig.Restart restart = this.config.get().restart();
-        YaminabeVelocityConfig.BeforeShutdown before = reservation.type() == ShutdownType.RESTART
-            ? restart.beforeRestart()
-            : restart.beforeShutdown();
-
-        var execution = before.kickPlayers()
-            ? executor.execute(
-                reservation.type(),
-                before.commands(),
-                RestartExecutionMessages.kickMessage(reservation).asComponent()
-            )
-            : executor.execute(reservation.type(), before.commands());
-
-        execution.whenComplete((ignored, failure) -> {
+    private void executeShutdown(VelocityShutdownExecutor executor, ShutdownReservation reservation) {
+        executor.execute(reservation).whenComplete((ignored, failure) -> {
             if (failure != null) {
                 log().error("Velocity shutdown execution completed exceptionally", failure);
             }
         });
     }
 
-    private Optional<AutomaticRestartManager.Settings> automaticRestartSettings() {
-        YaminabeVelocityConfig.Restart restart = this.config.get().restart();
-        YaminabeVelocityConfig.Scheduled scheduled = restart.scheduled();
-        if (!scheduled.enabled()) {
-            return Optional.empty();
-        }
-
-        ZoneId zoneId = this.restartZoneId(restart);
-        var times = new ArrayList<LocalTime>();
-        for (String input : scheduled.times()) {
-            try {
-                times.add(LocalTime.parse(input.strip(), SCHEDULED_TIME_FORMATTER));
-            } catch (DateTimeParseException exception) {
-                log().warn("Invalid automatic restart time '{}'; skipping it", input);
-            }
-        }
-        if (times.isEmpty()) {
-            log().info("Automatic restart is disabled because no valid restart times are configured");
-            return Optional.empty();
-        }
-
-        long countdownSeconds = scheduled.countdownSeconds();
-        if (countdownSeconds < 0) {
-            log().warn("restart.scheduled.countdown-seconds cannot be negative; using 0 instead");
-            countdownSeconds = 0;
-        }
-        return Optional.of(new AutomaticRestartManager.Settings(
-            new RestartSchedule(zoneId, times),
-            Duration.ofSeconds(countdownSeconds)
-        ));
-    }
-
-    private RestartCountdownSettings restartCountdownSettings() {
-        YaminabeVelocityConfig.Countdown countdown = this.config.get().restart().countdown();
-        Set<Long> broadcastAtSeconds = new HashSet<>();
-        for (int seconds : countdown.broadcastAtSeconds()) {
-            if (seconds > 0) {
-                broadcastAtSeconds.add((long) seconds);
-            }
-        }
-        return new RestartCountdownSettings(
-            countdown.bossBar().enabled(),
-            countdown.bossBar().color(),
-            countdown.bossBar().overlay(),
-            broadcastAtSeconds
-        );
-    }
-
-    private RestartCommandSettings restartCommandSettings() {
-        YaminabeVelocityConfig.Restart restart = this.config.get().restart();
-        long countdownSeconds = restart.defaultCountdownSeconds();
-        if (countdownSeconds < 0) {
-            log().warn("restart.default-countdown-seconds cannot be negative; using 0 instead");
-            countdownSeconds = 0;
-        }
-        return new RestartCommandSettings(Duration.ofSeconds(countdownSeconds), this.restartZoneId(restart));
-    }
-
-    private ZoneId restartZoneId(YaminabeVelocityConfig.Restart restart) {
-        ZoneId zoneId = ZoneId.systemDefault();
-        String configuredZone = restart.timeZone().strip();
-        if (!configuredZone.isEmpty()) {
-            try {
-                zoneId = ZoneId.of(configuredZone);
-            } catch (DateTimeException exception) {
-                log().warn("Invalid restart.time-zone '{}'; using system default {}", configuredZone, zoneId, exception);
-            }
-        }
-        return zoneId;
+    private VelocityRestartSettings restartSettings() {
+        return Objects.requireNonNull(this.restartSettings, "restart settings are not loaded");
     }
 
     private void loadConfig() throws IOException {
         this.config.reload();
+        this.restartSettings = VelocityRestartSettings.from(
+            this.config.get().restart(),
+            warning -> log().warn(warning)
+        );
 
         boolean debug = this.config.get().debug();
         logDebug(debug);
