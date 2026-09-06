@@ -8,6 +8,7 @@ import net.kyori.adventure.key.Key;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
+import net.okocraft.yaminabe.common.restart.AutomaticRestartManager;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.ShutdownReservation;
 import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownPresenter;
@@ -45,6 +46,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
     private final YaminabePaperConfig.Holder config;
     private volatile PaperRestartSettings restartSettings = PaperRestartSettings.from(new YaminabePaperConfig.Restart());
     private volatile @Nullable RestartService restartService;
+    private volatile @Nullable AutomaticRestartManager automaticRestartManager;
     private volatile @Nullable RestartCountdownPresenter restartCountdownPresenter;
     private PluginStatus status;
 
@@ -107,6 +109,10 @@ public class YaminabePaperPlugin extends JavaPlugin {
                     @Override
                     public void onCancelled(ShutdownReservation reservation) {
                         countdownPresenter.stop(reservation);
+                        AutomaticRestartManager manager = YaminabePaperPlugin.this.automaticRestartManager;
+                        if (manager != null) {
+                            manager.onCancelled(reservation);
+                        }
                     }
 
                     @Override
@@ -120,6 +126,14 @@ public class YaminabePaperPlugin extends JavaPlugin {
                     }
                 });
                 this.restartService = restartService;
+
+                AutomaticRestartManager automaticRestartManager = new AutomaticRestartManager(
+                    restartService,
+                    clock,
+                    () -> this.restartSettings.automaticSettings()
+                );
+                this.automaticRestartManager = automaticRestartManager;
+                automaticRestartManager.refresh();
 
                 boolean folia = ServerBuildInfo.buildInfo().isBrandCompatible(Key.key("papermc", "folia"));
                 this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
@@ -148,6 +162,12 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.ENABLED,
             "disable",
             () -> {
+                AutomaticRestartManager manager = this.automaticRestartManager;
+                if (manager != null) {
+                    manager.close();
+                    this.automaticRestartManager = null;
+                }
+
                 RestartCountdownPresenter presenter = this.restartCountdownPresenter;
                 if (presenter != null) {
                     presenter.close();
@@ -169,6 +189,10 @@ public class YaminabePaperPlugin extends JavaPlugin {
     private void reload(Consumer<YaminabeReloader.Notification> consumer) {
         try {
             this.loadConfig();
+            AutomaticRestartManager manager = this.automaticRestartManager;
+            if (manager != null) {
+                manager.refresh();
+            }
             consumer.accept(YaminabeReloader.Notification.CONFIG_RELOADED);
         } catch (IOException e) {
             log().error("Failed to reload config", e);

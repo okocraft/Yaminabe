@@ -39,8 +39,11 @@ public class YaminabePaperConfig {
         @Comment("Default countdown duration in seconds used by manual restart and shutdown commands.")
         private long defaultCountdownSeconds = 60;
 
-        @Comment("Time zone used by restart commands. Leave empty to use the system default time zone.")
+        @Comment("Time zone used by restart commands and automatic restart times. Leave empty to use the system default time zone.")
         private String timeZone = "";
+
+        @Comment("Automatic restart schedule.")
+        private Scheduled scheduled = new Scheduled();
 
         @Comment("Actions performed before a restart.")
         private BeforeShutdown beforeRestart = new BeforeShutdown();
@@ -59,6 +62,10 @@ public class YaminabePaperConfig {
             return this.timeZone;
         }
 
+        public Scheduled scheduled() {
+            return this.scheduled;
+        }
+
         public BeforeShutdown beforeRestart() {
             return this.beforeRestart;
         }
@@ -69,6 +76,31 @@ public class YaminabePaperConfig {
 
         public Countdown countdown() {
             return this.countdown;
+        }
+    }
+
+    @ConfigSerializable
+    public static class Scheduled {
+
+        @Comment("Whether automatic restarts are scheduled. Disabled by default; enable explicitly after configuring a safe restart environment.")
+        private boolean enabled = false;
+
+        @Comment("Times of day to restart the server, in HH:mm (24-hour). The nearest upcoming time is used.")
+        private List<String> times = new ArrayList<>(List.of("06:00"));
+
+        @Comment("Countdown duration in seconds used by automatic restarts. Zero disables the countdown.")
+        private long countdownSeconds = 60;
+
+        public boolean enabled() {
+            return this.enabled;
+        }
+
+        public List<String> times() {
+            return List.copyOf(this.times);
+        }
+
+        public long countdownSeconds() {
+            return this.countdownSeconds;
         }
     }
 
