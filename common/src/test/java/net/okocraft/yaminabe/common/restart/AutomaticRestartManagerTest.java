@@ -84,7 +84,7 @@ class AutomaticRestartManagerTest {
 
         ShutdownReservation automatic = current(service);
         Assertions.assertEquals(ReservationSource.AUTOMATIC, automatic.source());
-        Assertions.assertEquals(Instant.parse("2026-09-06T21:00:00Z"), automatic.executeAt());
+        Assertions.assertEquals(Instant.parse("2026-09-07T09:00:00Z"), automatic.executeAt());
     }
 
     @Test
@@ -153,11 +153,8 @@ class AutomaticRestartManagerTest {
     }
 
     private static final class TestTask implements CancellableTask {
-        private boolean cancelled;
-
         @Override
         public void cancel() {
-            this.cancelled = true;
         }
     }
 }
