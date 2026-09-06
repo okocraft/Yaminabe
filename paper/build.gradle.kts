@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.run.server)
 }
 
+apply(from = rootProject.file("gradle/merge-languages.gradle.kts"))
+
 val minecraftVersion = libs.versions.paper.get().replaceAfter(".build", "").removeSuffix(".build")
 
 dependencies {
