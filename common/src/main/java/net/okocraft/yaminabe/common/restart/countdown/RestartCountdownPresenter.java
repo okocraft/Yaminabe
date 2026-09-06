@@ -65,7 +65,7 @@ public final class RestartCountdownPresenter implements AutoCloseable {
                 settings.bossBarOverlay()
             )
             : null;
-        ActiveCountdown next = new ActiveCountdown(reservation, settings, total, bossBar);
+        ActiveCountdown next = new ActiveCountdown(reservation, settings, total, remaining, bossBar);
         ActiveCountdown previous;
         synchronized (this.stateLock) {
             previous = this.active;
@@ -102,12 +102,11 @@ public final class RestartCountdownPresenter implements AutoCloseable {
 
     public void showTo(Audience audience) {
         Objects.requireNonNull(audience);
-        BossBar bossBar;
         synchronized (this.stateLock) {
-            bossBar = this.active == null ? null : this.active.bossBar;
-        }
-        if (bossBar != null) {
-            audience.showBossBar(bossBar);
+            ActiveCountdown active = this.active;
+            if (active != null && active.bossBar != null && active.bossBarShown) {
+                audience.showBossBar(active.bossBar);
+            }
         }
     }
 
@@ -144,23 +143,36 @@ public final class RestartCountdownPresenter implements AutoCloseable {
     }
 
     private void render(ActiveCountdown countdown, long remaining) {
-        if (countdown.bossBar != null) {
-            countdown.bossBar
-                .name(RestartCountdownMessages.bossBar(countdown.reservation, remaining))
-                .progress(progress(remaining, countdown.totalSeconds));
-            if (!countdown.bossBarShown) {
-                countdown.bossBarShown = true;
-                for (Audience audience : this.audienceProvider.audiences()) {
-                    audience.showBossBar(countdown.bossBar);
+        synchronized (this.stateLock) {
+            if (this.active != countdown) {
+                return;
+            }
+
+            if (countdown.bossBar != null) {
+                countdown.bossBar
+                    .name(RestartCountdownMessages.bossBar(countdown.reservation, remaining))
+                    .progress(progress(remaining, countdown.totalSeconds));
+                if (!countdown.bossBarShown) {
+                    countdown.bossBarShown = true;
+                    for (Audience audience : this.audienceProvider.audiences()) {
+                        audience.showBossBar(countdown.bossBar);
+                    }
                 }
             }
-        }
 
-        if (countdown.settings.broadcastAtSeconds().contains(remaining) && countdown.broadcasted.add(remaining)) {
-            ComponentLike message = RestartCountdownMessages.countdown(countdown.reservation, remaining);
-            for (Audience audience : this.audienceProvider.audiences()) {
-                audience.sendMessage(message.asComponent());
+            if (remaining <= countdown.lastRemainingSeconds) {
+                for (long threshold : countdown.settings.broadcastAtSeconds()) {
+                    if (threshold <= countdown.lastRemainingSeconds
+                        && threshold >= remaining
+                        && countdown.broadcasted.add(threshold)) {
+                        ComponentLike message = RestartCountdownMessages.countdown(countdown.reservation, threshold);
+                        for (Audience audience : this.audienceProvider.audiences()) {
+                            audience.sendMessage(message.asComponent());
+                        }
+                    }
+                }
             }
+            countdown.lastRemainingSeconds = remaining;
         }
     }
 
@@ -172,10 +184,20 @@ public final class RestartCountdownPresenter implements AutoCloseable {
         if (countdown == null) {
             return;
         }
-        if (countdown.task != null) {
-            countdown.task.cancel();
+
+        @Nullable CancellableTask task;
+        boolean hideBossBar;
+        synchronized (this.stateLock) {
+            task = countdown.task;
+            countdown.task = null;
+            hideBossBar = countdown.bossBar != null && countdown.bossBarShown;
+            countdown.bossBarShown = false;
         }
-        if (countdown.bossBar != null && countdown.bossBarShown) {
+
+        if (task != null) {
+            task.cancel();
+        }
+        if (hideBossBar) {
             for (Audience audience : this.audienceProvider.audiences()) {
                 audience.hideBossBar(countdown.bossBar);
             }
@@ -206,17 +228,20 @@ public final class RestartCountdownPresenter implements AutoCloseable {
         private final @Nullable BossBar bossBar;
         private final Set<Long> broadcasted = new HashSet<>();
         private @Nullable CancellableTask task;
+        private long lastRemainingSeconds;
         private boolean bossBarShown;
 
         private ActiveCountdown(
             ShutdownReservation reservation,
             RestartCountdownSettings settings,
             long totalSeconds,
+            long initialRemainingSeconds,
             @Nullable BossBar bossBar
         ) {
             this.reservation = reservation;
             this.settings = settings;
             this.totalSeconds = totalSeconds;
+            this.lastRemainingSeconds = initialRemainingSeconds;
             this.bossBar = bossBar;
         }
     }
