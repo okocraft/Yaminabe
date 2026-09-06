@@ -41,6 +41,9 @@ public final class AutomaticRestartManager implements AutoCloseable {
         Instant now = this.clock.instant();
         Optional<ShutdownReservation> next = settings.flatMap(value -> this.createReservation(value, now, now));
         if (next.isPresent()) {
+            if (current.isPresent() && current.get().reservation().executeAt().equals(next.get().executeAt())) {
+                return;
+            }
             this.service.schedule(next.get());
         } else if (current.isPresent()) {
             this.service.cancel();
@@ -54,7 +57,9 @@ public final class AutomaticRestartManager implements AutoCloseable {
         }
 
         Instant now = this.clock.instant();
-        Instant after = cancelled.executeAt().isAfter(now) ? cancelled.executeAt() : now;
+        Instant after = cancelled.source() == ReservationSource.AUTOMATIC && cancelled.executeAt().isAfter(now)
+            ? cancelled.executeAt()
+            : now;
         this.settings()
             .flatMap(settings -> this.createReservation(settings, now, after))
             .ifPresent(this.service::schedule);
