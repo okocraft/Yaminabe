@@ -10,12 +10,15 @@ import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.ShutdownReservation;
+import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownPresenter;
 import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutor;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
 import net.okocraft.yaminabe.paper.config.PaperRestartSettings;
 import net.okocraft.yaminabe.paper.config.YaminabePaperConfig;
 import net.okocraft.yaminabe.paper.listener.EventListeners;
+import net.okocraft.yaminabe.paper.listener.RestartCountdownListener;
 import net.okocraft.yaminabe.paper.platform.PaperSchedulerProvider;
+import net.okocraft.yaminabe.paper.platform.restart.PaperRestartCountdownAudience;
 import net.okocraft.yaminabe.paper.platform.restart.PaperServerController;
 import net.okocraft.yaminabe.paper.platform.restart.PaperShutdownExecutor;
 import org.bukkit.event.HandlerList;
@@ -42,6 +45,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
     private final YaminabePaperConfig.Holder config;
     private volatile PaperRestartSettings restartSettings = PaperRestartSettings.from(new YaminabePaperConfig.Restart());
     private volatile @Nullable RestartService restartService;
+    private volatile @Nullable RestartCountdownPresenter restartCountdownPresenter;
     private PluginStatus status;
 
     public YaminabePaperPlugin(@NotNull PluginStatus initialStatus, @NotNull List<DefaultMessageDefiner> defaultMessages) {
@@ -86,9 +90,28 @@ public class YaminabePaperPlugin extends JavaPlugin {
                     new ShutdownExecutor(new PaperServerController(this, this.scheduler.entity())),
                     () -> this.restartSettings
                 );
+                RestartCountdownPresenter countdownPresenter = new RestartCountdownPresenter(
+                    this.scheduler.async(),
+                    clock,
+                    new PaperRestartCountdownAudience(this, this.scheduler.entity()),
+                    () -> this.restartSettings.countdownSettings()
+                );
+                this.restartCountdownPresenter = countdownPresenter;
+
                 RestartService restartService = new RestartService(this.scheduler.async(), clock, new RestartService.Listener() {
                     @Override
+                    public void onCountdownStarted(ShutdownReservation reservation) {
+                        countdownPresenter.start(reservation);
+                    }
+
+                    @Override
+                    public void onCancelled(ShutdownReservation reservation) {
+                        countdownPresenter.stop(reservation);
+                    }
+
+                    @Override
                     public void onExecute(ShutdownReservation reservation) {
+                        countdownPresenter.stop(reservation);
                         shutdownExecutor.execute(reservation).whenComplete((ignored, failure) -> {
                             if (failure != null) {
                                 log().error("Paper shutdown execution completed exceptionally", failure);
@@ -113,6 +136,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
                     );
                 });
                 EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
+                this.getServer().getPluginManager().registerEvents(new RestartCountdownListener(countdownPresenter), this);
                 return PluginStatus.ENABLED;
             }
         );
@@ -124,6 +148,12 @@ public class YaminabePaperPlugin extends JavaPlugin {
             PluginStatus.ENABLED,
             "disable",
             () -> {
+                RestartCountdownPresenter presenter = this.restartCountdownPresenter;
+                if (presenter != null) {
+                    presenter.close();
+                    this.restartCountdownPresenter = null;
+                }
+
                 RestartService service = this.restartService;
                 if (service != null) {
                     service.close();
