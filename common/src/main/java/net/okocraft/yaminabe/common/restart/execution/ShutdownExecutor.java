@@ -5,20 +5,35 @@ import net.okocraft.yaminabe.common.restart.ShutdownType;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static net.okocraft.yaminabe.common.YaminabeLogger.log;
 
 @NotNullByDefault
 public final class ShutdownExecutor {
 
+    public static final Duration DEFAULT_PREPARATION_TIMEOUT = Duration.ofSeconds(10);
+
     private final ServerController controller;
+    private final Duration preparationTimeout;
 
     public ShutdownExecutor(ServerController controller) {
+        this(controller, DEFAULT_PREPARATION_TIMEOUT);
+    }
+
+    public ShutdownExecutor(ServerController controller, Duration preparationTimeout) {
         this.controller = Objects.requireNonNull(controller);
+        this.preparationTimeout = Objects.requireNonNull(preparationTimeout);
+        if (preparationTimeout.isZero() || preparationTimeout.isNegative()) {
+            throw new IllegalArgumentException("preparationTimeout must be positive");
+        }
     }
 
     public CompletionStage<Void> executeWithoutKick(ShutdownType type, List<String> commands) {
@@ -40,23 +55,51 @@ public final class ShutdownExecutor {
     ) {
         Objects.requireNonNull(type);
         List<String> commandList = List.copyOf(commands);
+        AtomicBoolean timedOut = new AtomicBoolean();
+        AtomicReference<String> phase = new AtomicReference<>();
 
-        CompletionStage<Void> stage = CompletableFuture.completedFuture(null);
+        CompletionStage<Void> preparation = CompletableFuture.completedFuture(null);
         for (String command : commandList) {
-            stage = stage.thenCompose(ignored -> this.dispatchBestEffort(command));
+            preparation = preparation.thenCompose(ignored -> {
+                if (timedOut.get()) {
+                    return CompletableFuture.completedFuture(null);
+                }
+                phase.set("shutdown command '" + command + "'");
+                return this.dispatchBestEffort(command);
+            });
         }
 
-        stage = stage.handle((ignored, failure) -> null);
+        preparation = preparation.handle((ignored, failure) -> null);
         if (kickReason != null) {
-            stage = stage.thenCompose(ignored -> this.kickBestEffort(kickReason));
+            preparation = preparation.thenCompose(ignored -> {
+                if (timedOut.get()) {
+                    return CompletableFuture.completedFuture(null);
+                }
+                phase.set("player kick");
+                return this.kickBestEffort(kickReason);
+            });
         }
 
-        return stage.thenRun(() -> {
-            switch (type) {
-                case RESTART -> this.controller.restart();
-                case STOP -> this.controller.stop();
+        CompletableFuture<Void> preparationDeadline = new CompletableFuture<>();
+        preparation.whenComplete((ignored, failure) -> preparationDeadline.complete(null));
+        CompletableFuture.delayedExecutor(
+            Math.max(1L, this.preparationTimeout.toMillis()),
+            TimeUnit.MILLISECONDS
+        ).execute(() -> {
+            if (preparationDeadline.complete(null)) {
+                timedOut.set(true);
+                log().warn("Timed out while waiting for pre-shutdown {}", phase.get());
             }
         });
+
+        return preparationDeadline.thenRun(() -> this.executeFinalAction(type));
+    }
+
+    private void executeFinalAction(ShutdownType type) {
+        switch (type) {
+            case RESTART -> this.controller.restart();
+            case STOP -> this.controller.stop();
+        }
     }
 
     private CompletionStage<Void> dispatchBestEffort(String command) {
