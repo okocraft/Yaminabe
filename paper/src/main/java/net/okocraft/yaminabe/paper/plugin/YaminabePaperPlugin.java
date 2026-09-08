@@ -12,6 +12,7 @@ import net.okocraft.yaminabe.common.restart.AutomaticRestartManager;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.ShutdownReservation;
 import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownPresenter;
+import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutionCoordinator;
 import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutor;
 import net.okocraft.yaminabe.paper.command.YaminabeCommands;
 import net.okocraft.yaminabe.paper.config.PaperRestartSettings;
@@ -117,12 +118,15 @@ public class YaminabePaperPlugin extends JavaPlugin {
 
                     @Override
                     public void onExecute(ShutdownReservation reservation) {
-                        countdownPresenter.stop(reservation);
-                        shutdownExecutor.execute(reservation).whenComplete((ignored, failure) -> {
-                            if (failure != null) {
-                                log().error("Paper shutdown execution completed exceptionally", failure);
-                            }
-                        });
+                        ShutdownExecutionCoordinator.start(
+                            reservation,
+                            countdownPresenter::stop,
+                            current -> shutdownExecutor.execute(current).whenComplete((ignored, failure) -> {
+                                if (failure != null) {
+                                    log().error("Paper shutdown execution completed exceptionally", failure);
+                                }
+                            })
+                        );
                     }
                 });
                 this.restartService = restartService;
