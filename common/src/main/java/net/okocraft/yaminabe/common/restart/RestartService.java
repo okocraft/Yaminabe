@@ -17,6 +17,7 @@ public final class RestartService implements AutoCloseable {
     private final Listener listener;
     private final Object stateLock = new Object();
     private @Nullable ActiveReservation current;
+    private Lifecycle lifecycle = Lifecycle.OPEN;
 
     public RestartService(Scheduler scheduler, Clock clock, Listener listener) {
         this.scheduler = Objects.requireNonNull(scheduler);
@@ -35,6 +36,10 @@ public final class RestartService implements AutoCloseable {
         @Nullable TerminalNotification cancellation;
 
         synchronized (this.stateLock) {
+            if (this.lifecycle != Lifecycle.OPEN) {
+                return new ScheduleResult(ScheduleStatus.REJECTED_BY_LIFECYCLE, null);
+            }
+
             previous = this.current;
             if (reservation.source() == ReservationSource.AUTOMATIC
                 && previous != null
@@ -84,6 +89,10 @@ public final class RestartService implements AutoCloseable {
         ActiveReservation active;
         @Nullable TerminalNotification notification;
         synchronized (this.stateLock) {
+            if (this.lifecycle != Lifecycle.OPEN) {
+                return Optional.empty();
+            }
+
             active = this.current;
             if (active == null) {
                 return Optional.empty();
@@ -100,7 +109,22 @@ public final class RestartService implements AutoCloseable {
 
     @Override
     public void close() {
-        this.cancel();
+        @Nullable ActiveReservation active;
+        @Nullable TerminalNotification notification;
+        synchronized (this.stateLock) {
+            if (this.lifecycle == Lifecycle.CLOSED) {
+                return;
+            }
+
+            this.lifecycle = Lifecycle.CLOSED;
+            active = this.current;
+            this.current = null;
+            notification = active == null ? null : active.cancel();
+        }
+
+        if (active != null && notification != null) {
+            this.notifyTerminal(active.reservation, notification);
+        }
     }
 
     private void arm(ActiveReservation active) {
@@ -117,7 +141,7 @@ public final class RestartService implements AutoCloseable {
 
     private void startCountdown(ActiveReservation active) {
         synchronized (this.stateLock) {
-            if (this.current != active || !active.startCountdown()) {
+            if (this.lifecycle != Lifecycle.OPEN || this.current != active || !active.startCountdown()) {
                 return;
             }
         }
@@ -146,10 +170,11 @@ public final class RestartService implements AutoCloseable {
     private void execute(ActiveReservation active) {
         @Nullable TerminalNotification notification;
         synchronized (this.stateLock) {
-            if (this.current != active) {
+            if (this.lifecycle != Lifecycle.OPEN || this.current != active) {
                 return;
             }
             this.current = null;
+            this.lifecycle = Lifecycle.EXECUTING;
             notification = active.execute();
         }
 
@@ -206,7 +231,8 @@ public final class RestartService implements AutoCloseable {
         SCHEDULED,
         REPLACED,
         SUPERSEDED,
-        REJECTED_BY_MANUAL
+        REJECTED_BY_MANUAL,
+        REJECTED_BY_LIFECYCLE
     }
 
     public record Snapshot(ShutdownReservation reservation, Phase phase) {
@@ -224,7 +250,9 @@ public final class RestartService implements AutoCloseable {
             if (status == ScheduleStatus.REPLACED && replaced == null) {
                 throw new IllegalArgumentException("replaced reservation must be present for REPLACED status");
             }
-            if ((status == ScheduleStatus.SCHEDULED || status == ScheduleStatus.REJECTED_BY_MANUAL)
+            if ((status == ScheduleStatus.SCHEDULED
+                || status == ScheduleStatus.REJECTED_BY_MANUAL
+                || status == ScheduleStatus.REJECTED_BY_LIFECYCLE)
                 && replaced != null) {
                 throw new IllegalArgumentException("replaced reservation must be absent for this status");
             }
@@ -233,6 +261,12 @@ public final class RestartService implements AutoCloseable {
         public boolean scheduled() {
             return this.status == ScheduleStatus.SCHEDULED || this.status == ScheduleStatus.REPLACED;
         }
+    }
+
+    private enum Lifecycle {
+        OPEN,
+        EXECUTING,
+        CLOSED
     }
 
     private enum State {
