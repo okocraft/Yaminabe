@@ -48,13 +48,38 @@ public final class ShutdownExecutor {
         return this.executeInternal(type, commands, Objects.requireNonNull(kickReason));
     }
 
+    public CompletionStage<Void> executeFinal(ShutdownType type) {
+        Objects.requireNonNull(type);
+        try {
+            this.executeFinalAction(type);
+            return CompletableFuture.completedFuture(null);
+        } catch (RuntimeException | Error failure) {
+            return CompletableFuture.failedFuture(failure);
+        }
+    }
+
     private CompletionStage<Void> executeInternal(
         ShutdownType type,
         List<String> commands,
         @Nullable Component kickReason
     ) {
         Objects.requireNonNull(type);
-        List<String> commandList = List.copyOf(commands);
+        try {
+            return this.executePrepared(type, List.copyOf(commands), kickReason);
+        } catch (RuntimeException | Error failure) {
+            log().warn(
+                "Failed to prepare shutdown execution; proceeding directly to the terminal action",
+                failure
+            );
+            return this.executeFinal(type);
+        }
+    }
+
+    private CompletionStage<Void> executePrepared(
+        ShutdownType type,
+        List<String> commandList,
+        @Nullable Component kickReason
+    ) {
         AtomicBoolean timedOut = new AtomicBoolean();
         AtomicReference<String> phase = new AtomicReference<>();
 
@@ -98,7 +123,7 @@ public final class ShutdownExecutor {
             }
         });
 
-        return preparationDeadline.thenRun(() -> this.executeFinalAction(type));
+        return preparationDeadline.thenCompose(ignored -> this.executeFinal(type));
     }
 
     private void executeFinalAction(ShutdownType type) {
