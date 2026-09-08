@@ -107,6 +107,29 @@ public final class RestartService implements AutoCloseable {
         return Optional.of(active.reservation);
     }
 
+    public boolean cancel(ShutdownReservation expected) {
+        Objects.requireNonNull(expected);
+        ActiveReservation active;
+        @Nullable TerminalNotification notification;
+        synchronized (this.stateLock) {
+            if (this.lifecycle != Lifecycle.OPEN) {
+                return false;
+            }
+
+            active = this.current;
+            if (active == null || active.reservation != expected) {
+                return false;
+            }
+            this.current = null;
+            notification = active.cancel();
+        }
+
+        if (notification != null) {
+            this.notifyTerminal(active.reservation, notification);
+        }
+        return true;
+    }
+
     @Override
     public void close() {
         @Nullable ActiveReservation active;

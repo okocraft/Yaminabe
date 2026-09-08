@@ -46,7 +46,7 @@ public final class AutomaticRestartManager implements AutoCloseable {
             }
             this.service.schedule(next.get());
         } else if (current.isPresent()) {
-            this.service.cancel();
+            this.service.cancel(current.get().reservation());
         }
     }
 
