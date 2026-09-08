@@ -108,6 +108,84 @@ class RestartServiceTest {
     }
 
     @Test
+    void testScheduleRejectedAfterExecutionStarts() throws InterruptedException {
+        TestScheduler scheduler = new TestScheduler();
+        CountDownLatch executionEntered = new CountDownLatch(1);
+        CountDownLatch releaseExecution = new CountDownLatch(1);
+        AtomicReference<ShutdownReservation> executed = new AtomicReference<>();
+        RestartService.Listener listener = new RestartService.Listener() {
+            @Override
+            public void onExecute(ShutdownReservation reservation) {
+                executed.set(reservation);
+                executionEntered.countDown();
+                await(releaseExecution);
+            }
+        };
+        RestartService service = service(scheduler, listener);
+        ShutdownReservation first = reservation(ReservationSource.MANUAL, Duration.ofMinutes(10), ShutdownType.STOP);
+        ShutdownReservation second = reservation(ReservationSource.MANUAL, Duration.ofMinutes(20), ShutdownType.RESTART);
+        service.schedule(first);
+
+        Thread executionThread = daemonThread(() -> scheduler.tasks.get(0).run());
+        executionThread.start();
+        Assertions.assertTrue(executionEntered.await(1, TimeUnit.SECONDS));
+
+        RestartService.ScheduleResult result = service.schedule(second);
+
+        Assertions.assertEquals(RestartService.ScheduleStatus.REJECTED_BY_LIFECYCLE, result.status());
+        Assertions.assertFalse(result.scheduled());
+        Assertions.assertEquals(first, executed.get());
+        Assertions.assertEquals(2, scheduler.tasks.size());
+        Assertions.assertTrue(service.current().isEmpty());
+        Assertions.assertTrue(service.cancel().isEmpty());
+
+        releaseExecution.countDown();
+        executionThread.join(1000);
+        Assertions.assertFalse(executionThread.isAlive());
+    }
+
+    @Test
+    void testCloseAndScheduleRaceLeavesServiceClosed() throws InterruptedException {
+        BlockingScheduler scheduler = new BlockingScheduler();
+        RestartService service = new RestartService(
+            scheduler,
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new RestartService.Listener() {
+            }
+        );
+        ShutdownReservation reservation = reservation(ReservationSource.MANUAL, Duration.ofMinutes(10));
+        AtomicReference<RestartService.ScheduleResult> scheduleResult = new AtomicReference<>();
+        CountDownLatch closeStarted = new CountDownLatch(1);
+
+        Thread scheduleThread = daemonThread(() -> scheduleResult.set(service.schedule(reservation)));
+        scheduleThread.start();
+        Assertions.assertTrue(scheduler.firstDelayedCall.await(1, TimeUnit.SECONDS));
+
+        Thread closeThread = daemonThread(() -> {
+            closeStarted.countDown();
+            service.close();
+        });
+        closeThread.start();
+        Assertions.assertTrue(closeStarted.await(1, TimeUnit.SECONDS));
+        scheduler.releaseFirstDelayedCall.countDown();
+
+        scheduleThread.join(1000);
+        closeThread.join(1000);
+        Assertions.assertFalse(scheduleThread.isAlive());
+        Assertions.assertFalse(closeThread.isAlive());
+        Assertions.assertNotNull(scheduleResult.get());
+        Assertions.assertTrue(service.current().isEmpty());
+        Assertions.assertEquals(2, scheduler.tasks.size());
+        Assertions.assertTrue(scheduler.tasks.stream().allMatch(task -> task.cancelled));
+
+        RestartService.ScheduleResult afterClose = service.schedule(
+            reservation(ReservationSource.MANUAL, Duration.ofMinutes(20))
+        );
+        Assertions.assertEquals(RestartService.ScheduleStatus.REJECTED_BY_LIFECYCLE, afterClose.status());
+        Assertions.assertEquals(2, scheduler.tasks.size());
+    }
+
+    @Test
     void testCancellationNotificationDoesNotOvertakeCountdownNotification() throws InterruptedException {
         TestScheduler scheduler = new TestScheduler();
         CountDownLatch countdownEntered = new CountDownLatch(1);
@@ -216,11 +294,15 @@ class RestartServiceTest {
     }
 
     private static ShutdownReservation reservation(ReservationSource source, Duration delay) {
+        return reservation(source, delay, ShutdownType.RESTART);
+    }
+
+    private static ShutdownReservation reservation(ReservationSource source, Duration delay, ShutdownType type) {
         return ShutdownReservation.create(
             NOW,
             NOW.plus(delay),
             Duration.ofSeconds(60),
-            ShutdownType.RESTART,
+            type,
             source,
             null
         );
@@ -263,9 +345,9 @@ class RestartServiceTest {
         }
     }
 
-    private static final class TestScheduler implements Scheduler {
+    private static class TestScheduler implements Scheduler {
 
-        private final List<TestTask> tasks = new ArrayList<>();
+        protected final List<TestTask> tasks = new ArrayList<>();
 
         @Override
         public void runNow(@NotNull Runnable task) {
@@ -285,6 +367,21 @@ class RestartServiceTest {
             @NotNull Duration interval
         ) {
             throw new UnsupportedOperationException();
+        }
+    }
+
+    private static final class BlockingScheduler extends TestScheduler {
+        private final CountDownLatch firstDelayedCall = new CountDownLatch(1);
+        private final CountDownLatch releaseFirstDelayedCall = new CountDownLatch(1);
+        private final AtomicBoolean blockFirstDelayedCall = new AtomicBoolean(true);
+
+        @Override
+        public @NotNull CancellableTask runDelayed(@NotNull Runnable task, @NotNull Duration delay) {
+            if (this.blockFirstDelayedCall.compareAndSet(true, false)) {
+                this.firstDelayedCall.countDown();
+                await(this.releaseFirstDelayedCall);
+            }
+            return super.runDelayed(task, delay);
         }
     }
 
