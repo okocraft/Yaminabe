@@ -15,6 +15,8 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -133,6 +135,45 @@ class AutomaticRestartManagerTest {
         Assertions.assertTrue(service.current().isEmpty());
     }
 
+    @Test
+    void testDisabledRefreshDoesNotCancelManualReplacement() throws InterruptedException {
+        TestScheduler scheduler = new TestScheduler();
+        Clock serviceClock = Clock.fixed(NOW, ZoneOffset.UTC);
+        BlockingClock managerClock = new BlockingClock(NOW);
+        RestartService service = new RestartService(scheduler, serviceClock, new RestartService.Listener() {
+        });
+        ShutdownReservation automatic = ShutdownReservation.create(
+            NOW,
+            NOW.plus(Duration.ofHours(1)),
+            Duration.ofMinutes(1),
+            ShutdownType.RESTART,
+            ReservationSource.AUTOMATIC,
+            null
+        );
+        service.schedule(automatic);
+        AutomaticRestartManager manager = new AutomaticRestartManager(service, managerClock, Optional::empty);
+
+        Thread refreshThread = new Thread(manager::refresh);
+        refreshThread.setDaemon(true);
+        refreshThread.start();
+        Assertions.assertTrue(managerClock.instantEntered.await(1, TimeUnit.SECONDS));
+
+        ShutdownReservation manual = ShutdownReservation.create(
+            NOW,
+            NOW.plus(Duration.ofHours(2)),
+            Duration.ofMinutes(1),
+            ShutdownType.STOP,
+            ReservationSource.MANUAL,
+            null
+        );
+        service.schedule(manual);
+        managerClock.releaseInstant.countDown();
+
+        refreshThread.join(1000);
+        Assertions.assertFalse(refreshThread.isAlive());
+        Assertions.assertSame(manual, current(service));
+    }
+
     private static RestartService serviceWithCancellationManager(
         TestScheduler scheduler,
         Clock clock,
@@ -170,6 +211,38 @@ class AutomaticRestartManagerTest {
     }
 
     private record Fixture(RestartService service, AutomaticRestartManager manager, TestScheduler scheduler) {
+    }
+
+    private static final class BlockingClock extends Clock {
+        private final Instant instant;
+        private final CountDownLatch instantEntered = new CountDownLatch(1);
+        private final CountDownLatch releaseInstant = new CountDownLatch(1);
+
+        private BlockingClock(Instant instant) {
+            this.instant = instant;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return Clock.fixed(this.instant, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            this.instantEntered.countDown();
+            try {
+                this.releaseInstant.await();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(exception);
+            }
+            return this.instant;
+        }
     }
 
     private static final class TestScheduler implements Scheduler {
