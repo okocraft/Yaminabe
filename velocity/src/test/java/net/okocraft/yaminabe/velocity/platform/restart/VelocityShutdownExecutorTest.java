@@ -54,6 +54,21 @@ class VelocityShutdownExecutorTest {
         Assertions.assertEquals(List.of("command:stop-command", "stop"), controller.events);
     }
 
+    @Test
+    void testSettingsFailureFallsBackToTerminalActionOnce() {
+        TestController controller = new TestController();
+        VelocityShutdownExecutor executor = new VelocityShutdownExecutor(
+            new ShutdownExecutor(controller),
+            () -> {
+                throw new IllegalStateException("settings failed");
+            }
+        );
+
+        executor.execute(reservation(ShutdownType.STOP)).toCompletableFuture().join();
+
+        Assertions.assertEquals(List.of("stop"), controller.events);
+    }
+
     private static ShutdownReservation reservation(ShutdownType type) {
         return ShutdownReservation.create(
             NOW,
