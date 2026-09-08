@@ -5,10 +5,12 @@ import net.okocraft.yaminabe.common.restart.ShutdownType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 class ShutdownExecutorTest {
 
@@ -79,6 +81,36 @@ class ShutdownExecutorTest {
             List.of("command:first", "command:second", "kick", "stop"),
             controller.events
         );
+    }
+
+    @Test
+    void testHungCommandCannotPreventStop() throws Exception {
+        TestController controller = new TestController();
+        controller.commandResults.add(new CompletableFuture<>());
+
+        CompletionStage<Void> execution = new ShutdownExecutor(controller, Duration.ofMillis(25)).executeWithoutKick(
+            ShutdownType.STOP,
+            List.of("hung", "must-not-run")
+        );
+
+        execution.toCompletableFuture().get(1, TimeUnit.SECONDS);
+        Assertions.assertEquals(List.of("command:hung", "stop"), controller.events);
+    }
+
+    @Test
+    void testHungPlayerKickCannotPreventRestart() throws Exception {
+        TestController controller = new TestController();
+        controller.commandResults.add(CompletableFuture.completedFuture(true));
+        controller.kickResult = new CompletableFuture<>();
+
+        CompletionStage<Void> execution = new ShutdownExecutor(controller, Duration.ofMillis(25)).execute(
+            ShutdownType.RESTART,
+            List.of("save"),
+            Component.text("restart")
+        );
+
+        execution.toCompletableFuture().get(1, TimeUnit.SECONDS);
+        Assertions.assertEquals(List.of("command:save", "kick", "restart"), controller.events);
     }
 
     private static final class TestController implements ServerController {
