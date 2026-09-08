@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -111,6 +112,18 @@ class ShutdownExecutorTest {
 
         execution.toCompletableFuture().get(1, TimeUnit.SECONDS);
         Assertions.assertEquals(List.of("command:save", "kick", "restart"), controller.events);
+    }
+
+    @Test
+    void testSynchronousPreparationFailureFallsBackToTerminalActionOnce() {
+        TestController controller = new TestController();
+
+        new ShutdownExecutor(controller).executeWithoutKick(
+            ShutdownType.STOP,
+            Arrays.asList("save", null)
+        ).toCompletableFuture().join();
+
+        Assertions.assertEquals(List.of("stop"), controller.events);
     }
 
     private static final class TestController implements ServerController {
