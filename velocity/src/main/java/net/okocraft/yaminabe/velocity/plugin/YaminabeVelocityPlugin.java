@@ -14,6 +14,7 @@ import net.okocraft.yaminabe.common.restart.AutomaticRestartManager;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.ShutdownReservation;
 import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownPresenter;
+import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutionCoordinator;
 import net.okocraft.yaminabe.common.restart.execution.ShutdownExecutor;
 import net.okocraft.yaminabe.velocity.command.YaminabeCommands;
 import net.okocraft.yaminabe.velocity.config.VelocityRestartSettings;
@@ -102,8 +103,11 @@ public final class YaminabeVelocityPlugin {
 
             @Override
             public void onExecute(ShutdownReservation reservation) {
-                countdownPresenter.stop(reservation);
-                YaminabeVelocityPlugin.this.executeShutdown(shutdownExecutor, reservation);
+                ShutdownExecutionCoordinator.start(
+                    reservation,
+                    countdownPresenter::stop,
+                    current -> YaminabeVelocityPlugin.this.executeShutdown(shutdownExecutor, current)
+                );
             }
         });
         this.restartService = restartService;

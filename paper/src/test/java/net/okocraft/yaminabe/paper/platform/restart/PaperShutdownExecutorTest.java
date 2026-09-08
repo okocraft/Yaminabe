@@ -53,6 +53,21 @@ class PaperShutdownExecutorTest {
         Assertions.assertEquals(List.of("command:stop-command", "stop"), controller.events);
     }
 
+    @Test
+    void testSettingsFailureFallsBackToTerminalActionOnce() {
+        TestController controller = new TestController();
+        PaperShutdownExecutor executor = new PaperShutdownExecutor(
+            new ShutdownExecutor(controller),
+            () -> {
+                throw new IllegalStateException("settings failed");
+            }
+        );
+
+        executor.execute(reservation(ShutdownType.RESTART)).toCompletableFuture().join();
+
+        Assertions.assertEquals(List.of("restart"), controller.events);
+    }
+
     private static ShutdownReservation reservation(ShutdownType type) {
         return ShutdownReservation.create(
             NOW,
