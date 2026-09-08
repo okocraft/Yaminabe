@@ -81,14 +81,20 @@ public final class ShutdownExecutor {
         }
 
         CompletableFuture<Void> preparationDeadline = new CompletableFuture<>();
-        preparation.whenComplete((ignored, failure) -> preparationDeadline.complete(null));
+        AtomicBoolean deadlineCompleted = new AtomicBoolean();
+        preparation.whenComplete((ignored, failure) -> {
+            if (deadlineCompleted.compareAndSet(false, true)) {
+                preparationDeadline.complete(null);
+            }
+        });
         CompletableFuture.delayedExecutor(
             Math.max(1L, this.preparationTimeout.toMillis()),
             TimeUnit.MILLISECONDS
         ).execute(() -> {
-            if (preparationDeadline.complete(null)) {
+            if (deadlineCompleted.compareAndSet(false, true)) {
                 timedOut.set(true);
                 log().warn("Timed out while waiting for pre-shutdown {}", phase.get());
+                preparationDeadline.complete(null);
             }
         });
 
