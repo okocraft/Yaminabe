@@ -7,6 +7,8 @@ Shows a recorded player's identity and last connection observation on this Paper
 | `/seen <name>` | Exact, case-insensitive lookup of the last known Minecraft account name. |
 | `/seen <uuid>` | Lookup by canonical UUID, including offline players. |
 
+Only players and the local server console may execute this command. Command blocks, command minecarts,
+RCON and proxied senders are not supported: their output has different thread/lifetime requirements.
 Requires `yaminabe.command.seen`. No aliases are registered. The sender's permission is checked,
 including when `/execute` changes the command executor, and checked again when the asynchronous
 result is delivered. Targets are names or UUIDs, not selectors.
@@ -14,7 +16,9 @@ result is delivered. Targets are names or UUIDs, not selectors.
 Output includes the name and UUID, then online status with the latest recorded join, offline status
 with the latest confirmed departure, or an unconfirmed departure with the latest recorded join.
 Times use UTC ISO-8601. Players hidden from a viewer through Bukkit's visibility API are not reported
-online to that viewer. The console can see online status.
+online to that viewer. The console can see online status. After resolving an identity, the command reads
+a profile paired with the tracked connection state. If that state changes before presentation, it
+re-reads the profile by UUID. Status and timestamps are rendered from the same validated observation.
 
 If several UUIDs share a last known name, the command lists their identities and requires a UUID;
 it never guesses an account. Unknown players return no record rather than triggering an external

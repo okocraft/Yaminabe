@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -63,5 +64,28 @@ class PlayerProfileServiceTest {
         service.join(UUID.randomUUID(), "Example");
         assertThrows(java.util.concurrent.CompletionException.class, () -> service.closeAsync().join());
         verify(repository).closeAsync();
+    }
+
+    @Test
+    void observationDetectsOfflineReconnectAndDepartureEvenWhenOnlineFlagIsUnchanged() {
+        var repository = mock(PlayerProfileRepository.class);
+        UUID uuid = UUID.randomUUID();
+        var profile = new PlayerProfile(uuid, "Example", NOW, NOW, null);
+        when(repository.find(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(profile)));
+        when(repository.recordJoin(any(), anyString(), any(), any())).thenReturn(CompletableFuture.completedFuture(profile));
+        when(repository.recordQuit(any(), any(), any())).thenReturn(CompletableFuture.completedFuture(true));
+        var service = new PlayerProfileService(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+        var before = service.observe(uuid).join().orElseThrow();
+        assertFalse(before.online());
+        assertTrue(service.isCurrent(before));
+        var session = service.join(uuid, "Example");
+        service.quit(session).join();
+        assertFalse(service.isOnline(uuid));
+        assertFalse(service.isCurrent(before));
+        var after = service.observe(uuid).join().orElseThrow();
+        assertFalse(after.online());
+        assertTrue(service.isCurrent(after));
+        service.join(UUID.randomUUID(), "OtherPlayer");
+        assertTrue(service.isCurrent(after)); // Only the queried player's transitions invalidate the observation.
     }
 }

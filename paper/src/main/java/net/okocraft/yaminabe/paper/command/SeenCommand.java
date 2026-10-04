@@ -9,6 +9,7 @@ import net.okocraft.yaminabe.common.player.PlayerProfile;
 import net.okocraft.yaminabe.common.player.PlayerProfileService;
 import net.okocraft.yaminabe.paper.platform.EntityScheduler;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -28,7 +29,7 @@ final class SeenCommand {
         Function<UUID, Player> onlinePlayer
     ) {
         return Commands.literal("seen")
-            .requires(source -> source.getSender().hasPermission(PERMISSION))
+            .requires(source -> supported(source.getSender()) && source.getSender().hasPermission(PERMISSION))
             .then(Commands.argument("player", StringArgumentType.word())
                 .executes(context -> {
                     CommandSender sender = context.getSource().getSender();
@@ -48,7 +49,7 @@ final class SeenCommand {
                                 sender.sendMessage(CommandMessages.SEEN_IDENTITY.apply(profile.lastKnownName(), profile.uuid().toString()));
                             }
                         } else {
-                            show(sender, service, onlinePlayer, profiles.getFirst());
+                            refresh(sender, service, scheduler, onlinePlayer, profiles.getFirst().uuid(), input);
                         }
                     }));
                     return Command.SINGLE_SUCCESS;
@@ -76,17 +77,56 @@ final class SeenCommand {
                     action.run();
                 }
             }, () -> { });
-        } else {
+        } else if (sender instanceof ConsoleCommandSender) {
             action.run();
         }
     }
 
-    private static void show(CommandSender sender, PlayerProfileService service, Function<UUID, Player> onlinePlayer, PlayerProfile profile) {
+    private static boolean supported(CommandSender sender) {
+        return sender instanceof Player || sender instanceof ConsoleCommandSender;
+    }
+
+    private static void refresh(
+        CommandSender sender,
+        PlayerProfileService service,
+        EntityScheduler scheduler,
+        Function<UUID, Player> onlinePlayer,
+        UUID uuid,
+        String input
+    ) {
+        service.observe(uuid).whenComplete((observation, failure) -> {
+            if (failure != null) {
+                log().error("Failed to refresh player profile", failure);
+            }
+            reply(sender, scheduler, () -> {
+                if (!sender.hasPermission(PERMISSION)) {
+                    return;
+                }
+                if (failure != null) {
+                    sender.sendMessage(CommandMessages.SEEN_FAILED);
+                } else if (observation.isEmpty()) {
+                    sender.sendMessage(CommandMessages.SEEN_NOT_FOUND.apply(input));
+                } else {
+                    var snapshot = observation.orElseThrow();
+                    Player target = onlinePlayer.apply(uuid);
+                    boolean visible = !(sender instanceof Player viewer) || target == null || viewer.canSee(target);
+                    // Validate after the entity-scheduler delay and visibility lookup. Render exclusively from
+                    // this observation, never combine old stored times with a new isOnline() result.
+                    if (!service.isCurrent(snapshot)) {
+                        refresh(sender, service, scheduler, onlinePlayer, uuid, input);
+                        return;
+                    }
+                    show(sender, snapshot, target != null && visible);
+                }
+            });
+        });
+    }
+
+    private static void show(CommandSender sender, PlayerProfileService.Observation observation, boolean visibleOnline) {
+        PlayerProfile profile = observation.profile();
         String name = profile.lastKnownName();
         sender.sendMessage(CommandMessages.SEEN_IDENTITY.apply(name, profile.uuid().toString()));
-        Player target = onlinePlayer.apply(profile.uuid());
-        boolean visible = !(sender instanceof Player viewer) || target == null || viewer.canSee(target);
-        if (service.isOnline(profile.uuid()) && target != null && visible) {
+        if (observation.online() && visibleOnline) {
             sender.sendMessage(CommandMessages.SEEN_ONLINE.apply(name, profile.lastLoginAt().toString()));
         } else if (profile.logoutConfirmed()) {
             sender.sendMessage(CommandMessages.SEEN_OFFLINE.apply(name, profile.lastLogoutAt().toString()));

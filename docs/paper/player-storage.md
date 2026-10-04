@@ -19,9 +19,13 @@ so a delayed old quit cannot close a reconnect. Online status comes from current
 never from stored timestamps. An open token surviving a restart means the latest departure is
 unconfirmed; the system does not invent a logout time. This works even if the wall clock moves back.
 
-The initial `/seen` implementation only reads profiles. Its replies to players run on the sender's
-entity scheduler; rejected/retired connections receive no reply. No database task waits for a Player
-scheduler. Future setting updates must distinguish committed storage from successful online
+The initial `/seen` implementation only reads profiles. It retains the latest connection token and
+online flag for UUIDs observed during this service lifetime, including after quit, to detect
+offline/reconnect/offline transitions. Profile observations capture this metadata when submitting the
+read and are validated on the reply thread; changed observations are re-read before any output.
+Replies to players run on the sender's entity scheduler; rejected/retired connections receive no reply.
+No database task waits for a Player scheduler. Only players and the local console are supported as
+command senders. Future setting updates must distinguish committed storage from successful online
 application, check both connection token and current revision, and compute toggles within the
 ordered update operation rather than from a stale snapshot.
 
