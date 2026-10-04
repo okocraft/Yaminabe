@@ -10,6 +10,14 @@ final class CommandMessages {
     static final DefaultMessageDefiner DEFINER = DefaultMessageDefiner.create();
     private static final String PREFIX = "yaminabe.command.";
 
+    static final MessageKey SEEN_FAILED = DEFINER.define(PREFIX + "seen.failed", "<red>Failed to read player data. See the console for details.");
+    static final MessageKey.Arg1<String> SEEN_NOT_FOUND = DEFINER.define(PREFIX + "seen.not-found", "<red>No recorded player matches <aqua><player></aqua><red>.").with(player -> Argument.string("player", player));
+    static final MessageKey.Arg1<String> SEEN_AMBIGUOUS = DEFINER.define(PREFIX + "seen.ambiguous", "<red>Multiple players match <aqua><player></aqua><red>. Specify a UUID.").with(player -> Argument.string("player", player));
+    static final MessageKey.Arg2<String, String> SEEN_IDENTITY = DEFINER.define(PREFIX + "seen.identity", "<aqua><player></aqua><gray>: <uuid>").with(player -> Argument.string("player", player), uuid -> Argument.string("uuid", uuid));
+    static final MessageKey.Arg2<String, String> SEEN_ONLINE = DEFINER.define(PREFIX + "seen.online", "<aqua><player></aqua><gray> is online. Last joined: <aqua><time></aqua><gray>.").with(player -> Argument.string("player", player), time -> Argument.string("time", time));
+    static final MessageKey.Arg2<String, String> SEEN_OFFLINE = DEFINER.define(PREFIX + "seen.offline", "<aqua><player></aqua><gray> is offline. Last recorded departure: <aqua><time></aqua><gray>.").with(player -> Argument.string("player", player), time -> Argument.string("time", time));
+    static final MessageKey.Arg2<String, String> SEEN_UNCONFIRMED = DEFINER.define(PREFIX + "seen.unconfirmed", "<aqua><player></aqua><gray> is not visibly online. Departure time is unconfirmed. Last recorded join: <aqua><time></aqua><gray>.").with(player -> Argument.string("player", player), time -> Argument.string("time", time));
+
     static final MessageKey.Arg1<String> VERSION_PRINT = DEFINER.define(PREFIX + "version.print", "<green>Yaminabe <aqua><version>").with(version -> Argument.string("version", version));
 
     static final MessageKey RELOAD_START = DEFINER.define(PREFIX + "reload.start", "<gray>Reloading Yaminabe...");
