@@ -1,11 +1,14 @@
 package net.okocraft.yaminabe.paper.storage;
 
+import net.okocraft.yaminabe.common.player.PlayerProfile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sqlite.JDBC;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -17,53 +20,50 @@ class SqlitePlayerProfileRepositoryTest {
 
     @TempDir
     Path directory;
-    private static final Instant JOIN = Instant.parse("2026-10-04T11:00:00Z");
+    private static final Instant UPDATED = Instant.parse("2026-10-05T00:00:00Z");
 
     @Test
-    void persistsProfilesAndKeepsNamesNonUnique() throws Exception {
+    void persistsExactlyTheThreeIdentityFields() throws Exception {
         Path file = this.directory.resolve("players.db");
-        UUID first = UUID.randomUUID();
-        UUID second = UUID.randomUUID();
-        UUID session = UUID.randomUUID();
         var repository = SqlitePlayerProfileRepository.open(file);
-        assertTrue(await(repository.find(first)).isEmpty());
-        var profile = await(repository.recordJoin(first, "Example", session, JOIN));
-        assertNull(profile.lastLogoutAt());
-        assertFalse(profile.logoutConfirmed());
-        assertTrue(await(repository.recordQuit(first, session, JOIN.plusSeconds(30))));
-        await(repository.recordJoin(second, "EXAMPLE", UUID.randomUUID(), JOIN));
-        assertEquals(2, await(repository.findByName("example")).size());
+        var profile = new PlayerProfile(UUID.randomUUID(), "Example", UPDATED);
+        assertTrue(await(repository.find(profile.uuid())).isEmpty());
+        await(repository.upsert(profile));
         await(repository.closeAsync());
 
         var reopened = SqlitePlayerProfileRepository.open(file);
         try {
-            profile = await(reopened.find(first)).orElseThrow();
-            assertEquals(JOIN, profile.lastLoginAt());
-            assertEquals(JOIN.plusSeconds(30), profile.lastLogoutAt());
-            assertTrue(profile.logoutConfirmed());
+            assertEquals(profile, await(reopened.find(profile.uuid())).orElseThrow());
         } finally {
             await(reopened.closeAsync());
+        }
+        try (var connection = new JDBC().connect("jdbc:sqlite:" + file, new Properties());
+             var statement = connection.createStatement();
+             var result = statement.executeQuery("PRAGMA table_info(player_profiles)")) {
+            var columns = new ArrayList<String>();
+            while (result.next()) {
+                columns.add(result.getString("name"));
+            }
+            assertEquals(List.of("uuid", "name", "updated_at"), columns);
         }
     }
 
     @Test
-    void serializesReadsWithWritesAndRejectsStaleQuit() throws Exception {
+    void ordersUpsertsAndReadsWithoutTreatingNamesAsUnique() throws Exception {
         var repository = SqlitePlayerProfileRepository.open(this.directory.resolve("players.db"));
-        UUID uuid = UUID.randomUUID();
-        UUID oldSession = UUID.randomUUID();
-        UUID newSession = UUID.randomUUID();
-        var first = repository.recordJoin(uuid, "OldName", oldSession, JOIN);
-        var second = repository.recordJoin(uuid, "NewName", newSession, JOIN.minusSeconds(10));
-        var staleQuit = repository.recordQuit(uuid, oldSession, JOIN.plusSeconds(30));
-        var read = repository.find(uuid);
-        await(first);
-        await(second);
-        assertFalse(await(staleQuit));
-        var profile = await(read).orElseThrow();
-        assertEquals("NewName", profile.lastKnownName());
-        assertEquals(newSession, profile.openSessionId());
-        assertFalse(profile.logoutConfirmed()); // Clock order does not determine session closure.
-        assertTrue(await(repository.findByName("OldName")).isEmpty());
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        var initial = repository.upsert(new PlayerProfile(first, "OldName", UPDATED));
+        var renamed = new PlayerProfile(first, "Example", UPDATED.plusSeconds(20));
+        var update = repository.upsert(renamed);
+        var sameName = new PlayerProfile(second, "Example", UPDATED.plusSeconds(30));
+        var otherUpdate = repository.upsert(sameName);
+        var read = repository.find(first);
+        await(initial);
+        await(update);
+        await(otherUpdate);
+        assertEquals(renamed, await(read).orElseThrow());
+        assertEquals(sameName, await(repository.find(second)).orElseThrow());
         await(repository.closeAsync());
     }
 
@@ -71,17 +71,17 @@ class SqlitePlayerProfileRepositoryTest {
     void closeDrainsAcceptedWorkAndRejectsNewWork() throws Exception {
         Path file = this.directory.resolve("players.db");
         var repository = SqlitePlayerProfileRepository.open(file);
-        UUID uuid = UUID.randomUUID();
-        var write = repository.recordJoin(uuid, "Example", UUID.randomUUID(), JOIN);
+        var profile = new PlayerProfile(UUID.randomUUID(), "Example", UPDATED);
+        var write = repository.upsert(profile);
         var closing = repository.closeAsync();
         assertSame(closing, repository.closeAsync());
-        assertThrows(Exception.class, () -> await(repository.find(uuid)));
+        assertThrows(java.util.concurrent.ExecutionException.class, () -> await(repository.find(profile.uuid())));
+        assertThrows(java.util.concurrent.ExecutionException.class, () -> await(repository.upsert(profile)));
         await(closing);
-        assertEquals(uuid, await(write).uuid());
+        await(write);
         var reopened = SqlitePlayerProfileRepository.open(file);
         try {
-            // Closing the repository itself must not manufacture a logout after a crash/unclean session.
-            assertFalse(await(reopened.find(uuid)).orElseThrow().logoutConfirmed());
+            assertEquals(profile, await(reopened.find(profile.uuid())).orElseThrow());
         } finally {
             await(reopened.closeAsync());
         }
@@ -106,12 +106,12 @@ class SqlitePlayerProfileRepositoryTest {
     }
 
     @Test
-    void rollsBackFailedMigrationWithoutAdvancingVersion() throws Exception {
+    void initializationFailurePreservesExistingDataAndVersion() throws Exception {
         Path file = this.directory.resolve("players.db");
         try (var connection = new JDBC().connect("jdbc:sqlite:" + file, new Properties());
              var statement = connection.createStatement()) {
-            statement.execute("CREATE TABLE existing (name_key TEXT)");
-            statement.execute("CREATE INDEX player_profiles_name ON existing(name_key)");
+            statement.execute("CREATE TABLE player_profiles (value TEXT)");
+            statement.execute("INSERT INTO player_profiles VALUES ('keep')");
         }
         assertThrows(java.sql.SQLException.class, () -> SqlitePlayerProfileRepository.open(file));
         try (var connection = new JDBC().connect("jdbc:sqlite:" + file, new Properties());
@@ -120,10 +120,27 @@ class SqlitePlayerProfileRepositoryTest {
                 assertTrue(result.next());
                 assertEquals(0, result.getInt(1));
             }
-            try (var result = statement.executeQuery("SELECT name FROM sqlite_master WHERE name = 'player_profiles'")) {
-                assertFalse(result.next());
+            try (var result = statement.executeQuery("SELECT value FROM player_profiles")) {
+                assertTrue(result.next());
+                assertEquals("keep", result.getString(1));
             }
         }
+    }
+
+    @Test
+    void failedWriteDoesNotReplaceTheStoredIdentity() throws Exception {
+        Path file = this.directory.resolve("players.db");
+        var repository = SqlitePlayerProfileRepository.open(file);
+        var profile = new PlayerProfile(UUID.randomUUID(), "Example", UPDATED);
+        await(repository.upsert(profile));
+        try (var connection = new JDBC().connect("jdbc:sqlite:" + file, new Properties());
+             var statement = connection.createStatement()) {
+            statement.execute("CREATE TRIGGER reject_update BEFORE UPDATE ON player_profiles BEGIN SELECT RAISE(ABORT, 'rejected'); END");
+        }
+        assertThrows(java.util.concurrent.ExecutionException.class,
+            () -> await(repository.upsert(new PlayerProfile(profile.uuid(), "NewName", UPDATED.plusSeconds(20)))));
+        assertEquals(profile, await(repository.find(profile.uuid())).orElseThrow());
+        await(repository.closeAsync());
     }
 
     @Test

@@ -8,7 +8,7 @@ import net.kyori.adventure.key.Key;
 import net.okocraft.yaminabe.common.PluginStatus;
 import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.language.LanguageProvider;
-import net.okocraft.yaminabe.common.player.PlayerProfileService;
+import net.okocraft.yaminabe.common.player.PlayerProfileRepository;
 import net.okocraft.yaminabe.common.restart.AutomaticRestartManager;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.ShutdownReservation;
@@ -55,7 +55,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
     private volatile @Nullable AutomaticRestartManager automaticRestartManager;
     private volatile @Nullable RestartCountdownPresenter restartCountdownPresenter;
     private PluginStatus status;
-    private @Nullable PlayerProfileService profiles;
+    private @Nullable PlayerProfileRepository profiles;
 
     public YaminabePaperPlugin(@NotNull PluginStatus initialStatus, @NotNull List<DefaultMessageDefiner> defaultMessages) {
         this.status = initialStatus;
@@ -95,11 +95,9 @@ public class YaminabePaperPlugin extends JavaPlugin {
             "enable",
             () -> {
                 Clock clock = Clock.systemUTC();
-                PlayerProfileService profiles;
+                PlayerProfileRepository profiles;
                 try {
-                    profiles = new PlayerProfileService(
-                        SqlitePlayerProfileRepository.open(this.getDataPath().resolve("players.db")), clock
-                    );
+                    profiles = SqlitePlayerProfileRepository.open(this.getDataPath().resolve("players.db"));
                 } catch (Exception failure) {
                     log().error("Failed to initialize player storage; Yaminabe will not be enabled", failure);
                     return PluginStatus.EXCEPTION_OCCURRED;
@@ -163,8 +161,6 @@ public class YaminabePaperPlugin extends JavaPlugin {
                         this.scheduler.async(),
                         this.scheduler.region(),
                         this.scheduler.entity(),
-                        profiles,
-                        this.getServer()::getPlayer,
                         this::reload,
                         restartService,
                         () -> this.restartSettings.commandSettings(),
@@ -173,7 +169,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
                 });
                 EventListeners.createListeners().forEach(listener -> this.getServer().getPluginManager().registerEvents(listener, this));
                 this.getServer().getPluginManager().registerEvents(new RestartCountdownListener(countdownPresenter), this);
-                this.getServer().getPluginManager().registerEvents(new PlayerProfileListener(profiles), this);
+                this.getServer().getPluginManager().registerEvents(new PlayerProfileListener(profiles, clock), this);
                 return PluginStatus.ENABLED;
             }
         );
@@ -183,7 +179,7 @@ public class YaminabePaperPlugin extends JavaPlugin {
     public void onDisable() {
         HandlerList.unregisterAll(this);
         // Also close storage if a later initialization step prevented the ENABLED transition.
-        PlayerProfileService profiles = this.profiles;
+        PlayerProfileRepository profiles = this.profiles;
         this.profiles = null;
         if (profiles != null) {
             try {

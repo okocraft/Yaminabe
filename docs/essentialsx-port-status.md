@@ -5,8 +5,8 @@ against Yaminabe.
 
 | Status                      | Count |
 |-----------------------------|-------|
-| [Ported](#ported)           | 17    |
-| [Planned](#planned)         | 11    |
+| [Ported](#ported)           | 16    |
+| [Planned](#planned)         | 12    |
 | [Not planned](#not-planned) | 125   |
 
 Commands from the companion plugins (`EssentialsSpawn`: `/spawn`, `/setspawn`, and `EssentialsChat`,
@@ -33,7 +33,6 @@ Already implemented. See [Commands](paper/command/README.md) for details.
 | `/loom`             | -                | Opens up a loom.                 |                                                                                      |
 | `/ptime`            | -                | Adjust player's client time.     | Uses vanilla time arguments and player selectors; time is always fixed.              |
 | `/pweather`         | -                | Adjust a player's weather.       | Supports `clear` and `rain` with vanilla player selectors.                           |
-| `/seen`             | -                | Shows last recorded connection. | Exact account-name/UUID lookup; no IP/alternate-account lookup. See [storage](paper/player-storage.md). |
 | `/skull`            | -                | Set the owner of a player skull. | `head` / `playerskull` are not registered (`head` belongs to `/hat`).                |
 | `/smithingtable`    | -                | Opens up a smithing table.       | `smithtable` is not registered.                                                      |
 | `/stonecutter`      | -                | Opens up a stonecutter.          |                                                                                      |
@@ -53,6 +52,7 @@ Planned to port. Aliases still need to be decided per the policy in `CLAUDE.md`.
 | `/fly`        | -                                                                                        | Take off, and soar!                                     |
 | `/gamemode`   | `gm`, `gma`, `gmc`, `gms`, `gmsp`, `adventure`, `creative`, `survival`, `spectator`, ... | Change player gamemode.                                 |
 | `/nick`       | `nickname`                                                                               | Change your nickname or that of another player.         |
+| `/seen`       | `alts`                                                                                   | Shows the last logout time of a player.                 |
 | `/socialspy`  | -                                                                                        | Toggles if you can see msg/mail commands in chat.       |
 | `/speed`      | `flyspeed`, `fspeed`, `walkspeed`, `wspeed`                                              | Change your speed limits.                               |
 | `/sudo`       | -                                                                                        | Make another user perform a command.                    |

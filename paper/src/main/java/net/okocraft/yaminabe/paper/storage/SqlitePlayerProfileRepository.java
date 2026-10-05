@@ -11,9 +11,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
@@ -72,7 +69,7 @@ public final class SqlitePlayerProfileRepository implements PlayerProfileReposit
             }
             if (version == SCHEMA_VERSION) {
                 // Validate before accepting work; an invalid database must not become an empty one.
-                statement.executeQuery("SELECT uuid, last_known_name, name_key, last_login_at, last_logout_at, session_id FROM player_profiles LIMIT 0").close();
+                statement.executeQuery("SELECT uuid, name, updated_at FROM player_profiles LIMIT 0").close();
                 return;
             }
             connection.setAutoCommit(false);
@@ -80,14 +77,10 @@ public final class SqlitePlayerProfileRepository implements PlayerProfileReposit
                 statement.execute("""
                     CREATE TABLE player_profiles (
                         uuid TEXT PRIMARY KEY NOT NULL,
-                        last_known_name TEXT NOT NULL,
-                        name_key TEXT NOT NULL,
-                        last_login_at INTEGER NOT NULL,
-                        last_logout_at INTEGER,
-                        session_id TEXT
+                        name TEXT NOT NULL,
+                        updated_at INTEGER NOT NULL
                     )
                     """);
-                statement.execute("CREATE INDEX player_profiles_name ON player_profiles(name_key)");
                 statement.execute("PRAGMA user_version = " + SCHEMA_VERSION);
                 connection.commit();
             } catch (SQLException failure) {
@@ -105,63 +98,17 @@ public final class SqlitePlayerProfileRepository implements PlayerProfileReposit
     }
 
     @Override
-    public CompletableFuture<List<PlayerProfile>> findByName(String name) {
-        return this.submit(() -> {
-            try (var statement = this.connection.prepareStatement("SELECT * FROM player_profiles WHERE name_key = ? ORDER BY uuid")) {
-                statement.setString(1, name.toLowerCase(Locale.ROOT));
-                try (var result = statement.executeQuery()) {
-                    var profiles = new ArrayList<PlayerProfile>();
-                    while (result.next()) {
-                        profiles.add(profile(result));
-                    }
-                    return List.copyOf(profiles);
-                }
-            }
-        });
-    }
-
-    @Override
-    public CompletableFuture<PlayerProfile> recordJoin(UUID uuid, String name, UUID sessionId, Instant at) {
-        return this.submit(() -> {
-            this.connection.setAutoCommit(false);
-            try {
-                try (var statement = this.connection.prepareStatement("""
-                    INSERT INTO player_profiles(uuid, last_known_name, name_key, last_login_at, session_id)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(uuid) DO UPDATE SET last_known_name = excluded.last_known_name,
-                        name_key = excluded.name_key, last_login_at = excluded.last_login_at,
-                        session_id = excluded.session_id
-                    """)) {
-                    statement.setString(1, uuid.toString());
-                    statement.setString(2, name);
-                    statement.setString(3, name.toLowerCase(Locale.ROOT));
-                    statement.setLong(4, at.toEpochMilli());
-                    statement.setString(5, sessionId.toString());
-                    statement.executeUpdate();
-                }
-                PlayerProfile profile = this.read(uuid).orElseThrow();
-                this.connection.commit();
-                return profile;
-            } catch (SQLException | RuntimeException failure) {
-                this.connection.rollback();
-                throw failure;
-            } finally {
-                this.connection.setAutoCommit(true);
-            }
-        });
-    }
-
-    @Override
-    public CompletableFuture<Boolean> recordQuit(UUID uuid, UUID sessionId, Instant at) {
+    public CompletableFuture<Void> upsert(PlayerProfile profile) {
         return this.submit(() -> {
             try (var statement = this.connection.prepareStatement("""
-                UPDATE player_profiles SET last_logout_at = ?, session_id = NULL
-                WHERE uuid = ? AND session_id = ?
+                INSERT INTO player_profiles(uuid, name, updated_at) VALUES (?, ?, ?)
+                ON CONFLICT(uuid) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at
                 """)) {
-                statement.setLong(1, at.toEpochMilli());
-                statement.setString(2, uuid.toString());
-                statement.setString(3, sessionId.toString());
-                return statement.executeUpdate() == 1;
+                statement.setString(1, profile.uuid().toString());
+                statement.setString(2, profile.name());
+                statement.setLong(3, profile.updatedAt().toEpochMilli());
+                statement.executeUpdate();
+                return null;
             }
         });
     }
@@ -176,15 +123,10 @@ public final class SqlitePlayerProfileRepository implements PlayerProfileReposit
     }
 
     private static PlayerProfile profile(ResultSet result) throws SQLException {
-        long logout = result.getLong("last_logout_at");
-        Instant logoutAt = result.wasNull() ? null : Instant.ofEpochMilli(logout);
-        String session = result.getString("session_id");
         return new PlayerProfile(
             UUID.fromString(result.getString("uuid")),
-            result.getString("last_known_name"),
-            Instant.ofEpochMilli(result.getLong("last_login_at")),
-            logoutAt,
-            session == null ? null : UUID.fromString(session)
+            result.getString("name"),
+            Instant.ofEpochMilli(result.getLong("updated_at"))
         );
     }
 

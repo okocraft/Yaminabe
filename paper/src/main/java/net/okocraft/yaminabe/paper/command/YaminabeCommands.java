@@ -6,7 +6,6 @@ import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.ComponentLike;
 import net.okocraft.yaminabe.common.YaminabeReloader;
 import net.okocraft.yaminabe.common.platform.scheduler.Scheduler;
-import net.okocraft.yaminabe.common.player.PlayerProfileService;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.command.AutoRestartCommand;
 import net.okocraft.yaminabe.common.restart.command.RestartCommandMessages;
@@ -17,13 +16,10 @@ import net.okocraft.yaminabe.common.restart.countdown.RestartCountdownMessages;
 import net.okocraft.yaminabe.common.restart.execution.RestartExecutionMessages;
 import net.okocraft.yaminabe.paper.platform.EntityScheduler;
 import net.okocraft.yaminabe.paper.platform.RegionScheduler;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNullByDefault;
 
 import java.time.Clock;
 import java.util.List;
-import java.util.UUID;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 @NotNullByDefault
@@ -55,8 +51,6 @@ public final class YaminabeCommands {
         Scheduler async,
         RegionScheduler scheduler,
         EntityScheduler entityScheduler,
-        PlayerProfileService profiles,
-        Function<UUID, Player> onlinePlayer,
         YaminabeReloader reloader,
         RestartService restartService,
         Supplier<RestartCommandSettings> restartSettings,
@@ -88,7 +82,6 @@ public final class YaminabeCommands {
         commands.register(ItemNameCommand.createItemNameCommand(), ItemNameCommand.getAliases());
         commands.register(PTimeCommand.createPTimeCommand(entityScheduler));
         commands.register(PWeatherCommand.createPWeatherCommand(entityScheduler));
-        commands.register(SeenCommand.createSeenCommand(profiles, entityScheduler, onlinePlayer));
         commands.register(SignCommand.createSignCommand(scheduler), SignCommand.getAliases());
         commands.register(SkullCommand.createSkullCommand());
 
