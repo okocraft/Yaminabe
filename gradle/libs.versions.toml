@@ -5,6 +5,7 @@ annotations = "26.1.0"
 brigadier = "1.3.10"
 configurate = "4.2.0"
 mcmsgdef = "1.3.0"
+sqlite = "3.53.4.0"
 
 # platform api
 paper = "26.3.build.159-beta"
@@ -31,6 +32,7 @@ annotations = { module = "org.jetbrains:annotations", version.ref = "annotations
 brigadier = { module = "com.mojang:brigadier", version.ref = "brigadier" }
 configurate-yaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurate" }
 mcmsgdef = { module = "dev.siroshun.mcmsgdef:mcmsgdef", version.ref = "mcmsgdef" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
 
 # platform api
 paper = { module = "io.papermc.paper:paper-api", version.ref = "paper" }

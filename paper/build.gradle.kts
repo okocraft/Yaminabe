@@ -10,6 +10,7 @@ val minecraftVersion = libs.versions.paper.get().replaceAfter(".build", "").remo
 
 dependencies {
     implementation(projects.yaminabeCommon)
+    implementation(libs.sqlite.jdbc)
 
     compileOnlyApi(libs.paper)
     testImplementation(libs.paper)
