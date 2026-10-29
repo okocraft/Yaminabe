@@ -13,6 +13,9 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 class PaperServerControllerTest {
@@ -148,7 +151,43 @@ class PaperServerControllerTest {
     }
 
     @Test
-    void testRestartAndStopAreScheduledOnGlobalRegion() {
+    void testRestartDoesNotBlockSchedulerTermination() throws Exception {
+        Fixture fixture = fixture(true);
+        CompletableFuture<Thread> restartStarted = new CompletableFuture<>();
+        CompletableFuture<Boolean> restartFinished = new CompletableFuture<>();
+        CountDownLatch schedulerTerminated = new CountDownLatch(1);
+        Mockito.doAnswer(invocation -> {
+            restartStarted.complete(Thread.currentThread());
+            restartFinished.complete(schedulerTerminated.await(5, TimeUnit.SECONDS));
+            return null;
+        }).when(fixture.server).restart();
+        var controller = new PaperServerController(fixture.plugin, fixture.entityScheduler);
+
+        try {
+            controller.restart();
+
+            Thread restartThread = restartStarted.get(5, TimeUnit.SECONDS);
+            Assertions.assertNotSame(Thread.currentThread(), restartThread);
+            Assertions.assertFalse(restartThread.isDaemon());
+            Assertions.assertTrue(restartThread.isAlive());
+            Mockito.verify(fixture.server, Mockito.never()).getGlobalRegionScheduler();
+            Mockito.verifyNoInteractions(fixture.globalScheduler);
+        } finally {
+            // A shutdown hook can finish once the scheduler callback that requested the
+            // restart returns. Always release the simulated hook and join the worker.
+            schedulerTerminated.countDown();
+            if (restartStarted.isDone()) {
+                Thread restartThread = restartStarted.join();
+                restartThread.join(TimeUnit.SECONDS.toMillis(5));
+                Assertions.assertFalse(restartThread.isAlive());
+            }
+        }
+        Assertions.assertTrue(restartFinished.get(5, TimeUnit.SECONDS));
+        Mockito.verify(fixture.server).restart();
+    }
+
+    @Test
+    void testStopIsScheduledOnGlobalRegion() {
         Fixture fixture = fixture(false);
         List<Runnable> globalTasks = new ArrayList<>();
         Mockito.doAnswer(invocation -> {
@@ -157,15 +196,11 @@ class PaperServerControllerTest {
         }).when(fixture.globalScheduler).execute(Mockito.eq(fixture.plugin), Mockito.any(Runnable.class));
         var controller = new PaperServerController(fixture.plugin, fixture.entityScheduler);
 
-        controller.restart();
         controller.stop();
 
-        Mockito.verify(fixture.server, Mockito.never()).restart();
         Mockito.verify(fixture.server, Mockito.never()).shutdown();
-        Assertions.assertEquals(2, globalTasks.size());
+        Assertions.assertEquals(1, globalTasks.size());
         globalTasks.get(0).run();
-        globalTasks.get(1).run();
-        Mockito.verify(fixture.server).restart();
         Mockito.verify(fixture.server).shutdown();
     }
 
