@@ -1,6 +1,8 @@
 package net.okocraft.yaminabe.paper.command;
 
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.PaperCommands;
+import io.papermc.paper.plugin.configuration.PluginMeta;
 import net.okocraft.yaminabe.common.platform.scheduler.CancellableTask;
 import net.okocraft.yaminabe.common.platform.scheduler.Scheduler;
 import net.okocraft.yaminabe.common.restart.RestartService;
@@ -16,6 +18,8 @@ import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 
 import java.time.Clock;
@@ -29,6 +33,44 @@ class YaminabeCommandsTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-09-06T03:00:00Z"), ZoneOffset.UTC);
     private static final RestartCommandSettings SETTINGS = new RestartCommandSettings(Duration.ofSeconds(60), ZoneOffset.UTC);
+
+    @Test
+    void testAutoRestartCommandCanBeRegisteredWithPaper() {
+        var pluginMeta = Mockito.mock(PluginMeta.class);
+        Mockito.when(pluginMeta.namespace()).thenReturn("yaminabe");
+        var command = YaminabeCommands.createAutoRestartCommand(restartService(), CLOCK, () -> SETTINGS);
+
+        var labels = Assertions.assertDoesNotThrow(
+            () -> PaperCommands.INSTANCE.register(pluginMeta, command, null, List.of("are"))
+        );
+
+        Assertions.assertTrue(labels.containsAll(List.of("autorestart", "yaminabe:autorestart", "are", "yaminabe:are")));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "restart, 18:00, 2026-09-06T18:00:00Z",
+        "stop, 18:00, 2026-09-06T18:00:00Z",
+        "restart, 2026-09-10T18:00:30, 2026-09-10T18:00:30Z",
+        "stop, 2026-09-10T18:00:30, 2026-09-10T18:00:30Z"
+    })
+    void testAutoRestartAtPreservesDateTimeCountdownAndReason(String action, String input, String expectedTime) throws Exception {
+        CommandSender sender = Mockito.mock(CommandSender.class);
+        TestSources.grant(sender, RestartCommandPermissions.RESTART, RestartCommandPermissions.STOP);
+        RestartService service = restartService();
+        CommandTester tester = CommandTester.of(YaminabeCommands.createAutoRestartCommand(service, CLOCK, () -> SETTINGS));
+
+        Assertions.assertEquals(1, tester.execute(
+            TestSources.ofSenderOnly(sender),
+            "autorestart " + action + " at " + input + " countdown 5m reason maintenance window"
+        ));
+
+        var reservation = service.current().orElseThrow().reservation();
+        Assertions.assertEquals(action.equals("restart") ? ShutdownType.RESTART : ShutdownType.STOP, reservation.type());
+        Assertions.assertEquals(Instant.parse(expectedTime), reservation.executeAt());
+        Assertions.assertEquals(reservation.executeAt().minus(Duration.ofMinutes(5)), reservation.countdownStartAt());
+        Assertions.assertEquals("maintenance window", reservation.reason());
+    }
 
     @Test
     void testAutoRestartCommandUsesCommonCommandTree() throws Exception {

@@ -1,10 +1,15 @@
 package net.okocraft.yaminabe.paper.command;
 
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.siroshun.mcmsgdef.DefaultMessageDefiner;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.command.brigadier.argument.CustomArgumentType;
 import net.kyori.adventure.text.ComponentLike;
 import net.okocraft.yaminabe.common.YaminabeReloader;
+import net.okocraft.yaminabe.common.command.argument.TokenArgumentType;
 import net.okocraft.yaminabe.common.platform.scheduler.Scheduler;
 import net.okocraft.yaminabe.common.restart.RestartService;
 import net.okocraft.yaminabe.common.restart.command.AutoRestartCommand;
@@ -24,6 +29,20 @@ import java.util.function.Supplier;
 
 @NotNullByDefault
 public final class YaminabeCommands {
+
+    // Paper requires a client-recognized native type for custom parsers. Keep the token parser
+    // server-side so unquoted times and dates containing ':' still work.
+    private static final CustomArgumentType<String, String> DATE_TIME_ARGUMENT = new CustomArgumentType<>() {
+        @Override
+        public String parse(StringReader reader) {
+            return TokenArgumentType.token().parse(reader);
+        }
+
+        @Override
+        public ArgumentType<String> getNativeType() {
+            return StringArgumentType.word();
+        }
+    };
 
     private static final RestartCommandSource<CommandSourceStack> RESTART_SOURCE = new RestartCommandSource<>() {
         @Override
@@ -100,7 +119,8 @@ public final class YaminabeCommands {
             service,
             clock,
             settingsSupplier,
-            RESTART_SOURCE
+            RESTART_SOURCE,
+            DATE_TIME_ARGUMENT
         );
     }
 
