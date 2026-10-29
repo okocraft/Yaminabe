@@ -102,6 +102,8 @@ public final class PaperServerController implements ServerController {
 
     @Override
     public void restart() {
-        this.server.getGlobalRegionScheduler().execute(this.plugin, this.server::restart);
+        // Restart may wait for JVM shutdown hooks, including Folia's scheduler termination.
+        // It must run outside server-managed schedulers so their threads can terminate.
+        Thread.ofPlatform().name("Yaminabe-Restart").daemon(false).start(this.server::restart);
     }
 }
