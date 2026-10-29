@@ -25,7 +25,19 @@ public final class AutoRestartCommand {
         Supplier<RestartCommandSettings> settingsSupplier,
         RestartCommandSource<S> sourceAdapter
     ) {
+        return create(literal, service, clock, settingsSupplier, sourceAdapter, TokenArgumentType.token());
+    }
+
+    public static <S> LiteralCommandNode<S> create(
+        String literal,
+        RestartService service,
+        Clock clock,
+        Supplier<RestartCommandSettings> settingsSupplier,
+        RestartCommandSource<S> sourceAdapter,
+        ArgumentType<String> dateTimeArgument
+    ) {
         Objects.requireNonNull(literal);
+        Objects.requireNonNull(dateTimeArgument);
         RestartCommandExecutor<S> executor = new RestartCommandExecutor<>(
             service,
             clock,
@@ -35,8 +47,8 @@ public final class AutoRestartCommand {
 
         return LiteralArgumentBuilder.<S>literal(literal)
             .requires(source -> hasAnyPermission(source, sourceAdapter))
-            .then(createAction("restart", RestartCommandPermissions.RESTART, ShutdownType.RESTART, executor, sourceAdapter))
-            .then(createAction("stop", RestartCommandPermissions.STOP, ShutdownType.STOP, executor, sourceAdapter))
+            .then(createAction("restart", RestartCommandPermissions.RESTART, ShutdownType.RESTART, executor, sourceAdapter, dateTimeArgument))
+            .then(createAction("stop", RestartCommandPermissions.STOP, ShutdownType.STOP, executor, sourceAdapter, dateTimeArgument))
             .then(LiteralArgumentBuilder.<S>literal("cancel")
                 .requires(source -> sourceAdapter.hasPermission(source, RestartCommandPermissions.CANCEL))
                 .executes(context -> executor.cancel(context.getSource())))
@@ -54,7 +66,8 @@ public final class AutoRestartCommand {
         String permission,
         ShutdownType type,
         RestartCommandExecutor<S> executor,
-        RestartCommandSource<S> sourceAdapter
+        RestartCommandSource<S> sourceAdapter,
+        ArgumentType<String> dateTimeArgument
     ) {
         return LiteralArgumentBuilder.<S>literal(literal)
             .requires(source -> sourceAdapter.hasPermission(source, permission))
@@ -70,7 +83,7 @@ public final class AutoRestartCommand {
             .then(createTimedBranch(
                 "at",
                 "date-time",
-                TokenArgumentType.token(),
+                dateTimeArgument,
                 type,
                 executor::scheduleAt
             ));
