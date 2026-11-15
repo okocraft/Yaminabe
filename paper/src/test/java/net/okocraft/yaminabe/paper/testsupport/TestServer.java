@@ -8,6 +8,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponentInitializers;
 import net.minecraft.core.registries.BuiltInRegistries;
+import io.papermc.paper.plugin.lifecycle.event.registrar.ReloadableRegistrarEvent;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.RegistryLayer;
@@ -78,7 +79,8 @@ public final class TestServer {
             resources,
             TagLoader.buildUpdatedLookups(RegistryLayer.STATIC_ACCESS, tags),
             RegistryDataLoader.WORLD_REGISTRIES,
-            Runnable::run
+            Runnable::run,
+            ReloadableRegistrarEvent.Cause.INITIAL
         ).join();
 
         LayeredRegistryAccess<RegistryLayer> layers = RegistryLayer.createRegistryAccess().replaceFrom(RegistryLayer.WORLD, loaded);
